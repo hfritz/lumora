@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { SignSelector } from "@/components/sign-selector";
 import { QuoteCard } from "@/components/quote-card";
 import { ZodiacSignName } from "@/data/signs";
@@ -21,7 +22,8 @@ export default function Home() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loadingAnswer, setLoadingAnswer] = useState(false);
-  const [email, setEmail] = useState("");
+  const [askEmail, setAskEmail] = useState("");
+  const [subscribeEmail, setSubscribeEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 
   const fetchQuote = useCallback(async (selectedSign: ZodiacSignName) => {
@@ -31,7 +33,7 @@ export default function Home() {
       const data = await res.json();
       setQuoteData(data);
     } catch {
-      // silent fail — card stays in loading state
+      // silent — card stays in loading state
     } finally {
       setLoadingQuote(false);
     }
@@ -50,10 +52,13 @@ export default function Home() {
       const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, email: email || "anonymous" }),
+        body: JSON.stringify({
+          question,
+          email: askEmail || "anonymous@lumora.app",
+        }),
       });
       const data = await res.json();
-      setAnswer(data.answer ?? data.error ?? "Something went wrong.");
+      setAnswer(data.answer ?? data.message ?? data.error ?? "Something went wrong.");
     } catch {
       setAnswer("The stars are quiet right now. Try again in a moment.");
     } finally {
@@ -63,68 +68,110 @@ export default function Home() {
 
   async function handleSubscribe(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!subscribeEmail.trim()) return;
     try {
       await fetch("/api/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, zodiac_sign: sign }),
+        body: JSON.stringify({ email: subscribeEmail, zodiac_sign: sign }),
       });
       setSubscribed(true);
     } catch {
-      // silent fail for now
+      // silent
     }
   }
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-5 max-w-4xl mx-auto w-full">
-        <span
-          className="text-2xl tracking-widest text-gold uppercase"
-          style={{ fontFamily: "var(--font-cormorant)", fontWeight: 300 }}
-        >
-          Lumora
-        </span>
-        <a
-          href="#subscribe"
-          className="text-xs font-sans font-medium tracking-widest uppercase text-text-secondary border border-gold-light rounded-full px-4 py-2 hover:border-gold hover:text-text-primary transition-colors"
-        >
-          Subscribe
-        </a>
-      </header>
+      {/* ── Hero ── */}
+      <section className="relative flex flex-col min-h-screen">
+        {/* Background image */}
+        <Image
+          src="/hero.jpg"
+          alt="Woman on a balcony at dusk, constellation lines visible in the sky"
+          fill
+          priority
+          className="object-cover object-center"
+        />
 
-      <main className="flex flex-col flex-1 w-full max-w-4xl mx-auto px-4 pb-16">
-        {/* Hero */}
-        <section className="flex flex-col items-center gap-8 pt-10 pb-14">
-          <div className="text-center space-y-2">
+        {/* Overlay: subtle dark veil at top, fades to cream at bottom */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(to bottom, rgba(20,12,8,0.45) 0%, rgba(20,12,8,0.25) 45%, rgba(250,247,242,0.0) 65%, rgba(250,247,242,0.85) 85%, rgba(250,247,242,1) 100%)",
+          }}
+        />
+
+        {/* Header */}
+        <header className="relative z-10 flex items-center justify-between px-6 py-5 max-w-4xl mx-auto w-full">
+          <span
+            className="text-2xl tracking-widest text-white uppercase"
+            style={{ fontFamily: "var(--font-cormorant)", fontWeight: 300 }}
+          >
+            Lumora
+          </span>
+          <a
+            href="#subscribe"
+            className="text-xs font-sans font-medium tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-4 py-2 hover:border-white hover:text-white transition-colors"
+          >
+            Subscribe
+          </a>
+        </header>
+
+        {/* Hero text */}
+        <div className="relative z-10 flex flex-col items-center justify-center flex-1 text-center px-6 pb-32 pt-4">
+          <p className="text-xs font-sans tracking-widest uppercase text-white/60 mb-5">
+            Your daily cosmic guide
+          </p>
+          <h1
+            className="text-6xl sm:text-7xl lg:text-8xl text-white leading-none tracking-wider"
+            style={{ fontFamily: "var(--font-cormorant)", fontWeight: 300 }}
+          >
+            Lumora
+          </h1>
+          <p className="mt-5 text-base sm:text-lg text-white/75 font-sans max-w-sm leading-relaxed">
+            Astrology, moon phases, and AI-powered guidance — delivered every
+            morning.
+          </p>
+          <a
+            href="#guide"
+            className="mt-8 inline-flex items-center gap-2 rounded-full border border-white/50 text-white/90 text-xs font-sans font-medium tracking-widest uppercase px-7 py-3 hover:bg-white/10 transition-colors"
+          >
+            Read your guide
+          </a>
+        </div>
+      </section>
+
+      {/* ── Guide ── */}
+      <main id="guide" className="flex flex-col flex-1 w-full max-w-4xl mx-auto px-4 pb-16 -mt-4">
+        {/* Sign selector */}
+        <section className="flex flex-col items-center gap-6 pt-6 pb-10">
+          <div className="text-center space-y-1">
             <p className="text-xs font-sans tracking-widest uppercase text-text-muted">
-              Your cosmic guide for
+              Your sign
             </p>
-            <h1
-              className="text-5xl sm:text-6xl text-text-primary"
+            <h2
+              className="text-4xl sm:text-5xl text-text-primary"
               style={{ fontFamily: "var(--font-cormorant)", fontWeight: 300 }}
             >
               {sign}
-            </h1>
+            </h2>
           </div>
 
           <SignSelector selected={sign} onChange={setSign} />
 
-          {quoteData || loadingQuote ? (
-            <QuoteCard
-              quote={quoteData?.quote ?? ""}
-              sign={sign}
-              moonPhase={quoteData?.moon_phase ?? ""}
-              moonSign={quoteData?.moon_sign ?? ""}
-              retrograde={quoteData?.retrograde ?? null}
-              loading={loadingQuote}
-            />
-          ) : null}
+          <QuoteCard
+            quote={quoteData?.quote ?? ""}
+            sign={sign}
+            moonPhase={quoteData?.moon_phase ?? ""}
+            moonSign={quoteData?.moon_sign ?? ""}
+            retrograde={quoteData?.retrograde ?? null}
+            loading={loadingQuote}
+          />
         </section>
 
-        {/* Divider */}
-        <div className="w-full max-w-xs mx-auto border-t border-gold-light my-2" />
+        <div className="w-full max-w-xs mx-auto border-t border-gold-light" />
 
         {/* Q&A */}
         <section className="flex flex-col items-center gap-6 py-12">
@@ -141,6 +188,13 @@ export default function Home() {
           </div>
 
           <form onSubmit={handleAsk} className="w-full max-w-lg space-y-3">
+            <input
+              type="email"
+              value={askEmail}
+              onChange={(e) => setAskEmail(e.target.value)}
+              placeholder="your@email.com (to track your daily limit)"
+              className="w-full rounded-xl bg-surface border border-gold-light px-4 py-3 text-sm text-text-primary placeholder:text-text-muted font-sans focus:outline-none focus:border-gold transition-colors"
+            />
             <textarea
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
@@ -170,14 +224,10 @@ export default function Home() {
           )}
         </section>
 
-        {/* Divider */}
-        <div className="w-full max-w-xs mx-auto border-t border-gold-light my-2" />
+        <div className="w-full max-w-xs mx-auto border-t border-gold-light" />
 
         {/* Subscribe */}
-        <section
-          id="subscribe"
-          className="flex flex-col items-center gap-6 py-12"
-        >
+        <section id="subscribe" className="flex flex-col items-center gap-6 py-12">
           {subscribed ? (
             <div className="text-center space-y-2">
               <p
@@ -195,7 +245,10 @@ export default function Home() {
               <div className="text-center">
                 <h2
                   className="text-3xl text-text-primary"
-                  style={{ fontFamily: "var(--font-cormorant)", fontWeight: 400 }}
+                  style={{
+                    fontFamily: "var(--font-cormorant)",
+                    fontWeight: 400,
+                  }}
                 >
                   Your daily cosmic quote
                 </h2>
@@ -210,8 +263,8 @@ export default function Home() {
               >
                 <input
                   type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={subscribeEmail}
+                  onChange={(e) => setSubscribeEmail(e.target.value)}
                   placeholder="your@email.com"
                   required
                   className="w-full rounded-xl bg-surface border border-gold-light px-4 py-3 text-sm text-text-primary placeholder:text-text-muted font-sans focus:outline-none focus:border-gold transition-colors"
