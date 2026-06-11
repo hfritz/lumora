@@ -112,9 +112,13 @@ Stub — to be defined after technical spec.
 
 After reaching 50 subscribers: survey 5–10 on what they open most (quote vs. Q&A) and whether the daily ritual is forming. Use open rates and question frequency as leading indicators.
 
+## Decisions Made
+
+- **Daily quotes:** Personalized by zodiac sign — 12 quotes generated per day, one per sign. Zodiac sign required at signup.
+- **Daily question limit:** 1 question/day for anonymous users, 5/day for confirmed subscribers.
+- **Planetary data:** Astronomy Engine (open-source npm library) + static ephemeris JSON for retrograde dates.
+- **Push notifications:** Email only in v1. Web push deferred to v2.
+
 ## Open Questions
 
-- [ ] Should daily quotes be universal (same for everyone) or personalized by zodiac sign?
-- [ ] What is the exact daily question limit for free users?
-- [ ] Which planetary/moon data API to use?
-- [ ] Push notifications via web push, email only, or both?
+- [ ] PWA manifest and service worker — use `next-pwa` package or manual setup?
