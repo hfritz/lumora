@@ -15,6 +15,7 @@ Act as a product and engineering partner building a Next.js PWA. Help design and
 Before major work, read:
 - `README.md`
 - `specs/product-spec.md`
+- `specs/ui-spec.md`
 - `specs/technical-spec.md` (when available)
 - `AGENTS.md`
 - `spec-driven-development.md`

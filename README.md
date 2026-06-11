@@ -9,6 +9,7 @@ People wake up feeling off, anxious, or like things aren't going their way — a
 ## Specs
 
 - [Product Spec](specs/product-spec.md)
+- [UI Spec](specs/ui-spec.md)
 - [Technical Spec](specs/technical-spec.md)
 
 ## Tech stack
