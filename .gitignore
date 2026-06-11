@@ -1,0 +1,16 @@
+.DS_Store
+node_modules/
+.env
+.env.*
+!.env.example
+dist/
+build/
+.next/
+coverage/
+*.log
+
+# Local-only docs (tracked locally, not in repo)
+docs/helmut-context.md
+docs/project-memory.md
+docs/global-instructions.md
+
