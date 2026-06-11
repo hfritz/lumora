@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { SignSelector } from "@/components/sign-selector";
 import { QuoteCard } from "@/components/quote-card";
+import { StarField } from "@/components/star-field";
 import { ZodiacSignName } from "@/data/signs";
 
 interface QuoteData {
@@ -93,6 +94,8 @@ export default function Home() {
           priority
           className="object-cover object-center"
         />
+
+        <StarField />
 
         {/* Overlay: subtle dark veil at top, fades to cream at bottom */}
         <div
