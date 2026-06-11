@@ -1,0 +1,43 @@
+{
+  "year": 2026,
+  "retrogrades": [
+    {
+      "planet": "Mercury",
+      "start": "2026-01-25",
+      "end": "2026-02-14",
+      "sign": "Aquarius",
+      "affected_signs": ["Gemini", "Virgo", "Aquarius"]
+    },
+    {
+      "planet": "Mercury",
+      "start": "2026-05-29",
+      "end": "2026-06-22",
+      "sign": "Gemini",
+      "affected_signs": ["Gemini", "Virgo", "Sagittarius"]
+    },
+    {
+      "planet": "Mercury",
+      "start": "2026-09-22",
+      "end": "2026-10-15",
+      "sign": "Libra",
+      "affected_signs": ["Gemini", "Virgo", "Libra"]
+    },
+    {
+      "planet": "Venus",
+      "start": "2026-07-23",
+      "end": "2026-09-04",
+      "sign": "Leo",
+      "affected_signs": ["Taurus", "Libra", "Leo"]
+    }
+  ],
+  "moon_phases": [
+    { "date": "2026-06-03", "phase": "New Moon", "sign": "Gemini" },
+    { "date": "2026-06-11", "phase": "Waxing Gibbous", "sign": "Scorpio" },
+    { "date": "2026-06-18", "phase": "Full Moon", "sign": "Sagittarius" },
+    { "date": "2026-06-25", "phase": "Waning Crescent", "sign": "Pisces" },
+    { "date": "2026-07-02", "phase": "New Moon", "sign": "Cancer" },
+    { "date": "2026-07-10", "phase": "Waxing Gibbous", "sign": "Scorpio" },
+    { "date": "2026-07-17", "phase": "Full Moon", "sign": "Capricorn" },
+    { "date": "2026-07-25", "phase": "Waning Crescent", "sign": "Aries" }
+  ]
+}
