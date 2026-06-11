@@ -3,14 +3,14 @@
 import { ZODIAC_SIGNS, ZodiacSignName } from "@/data/signs";
 
 interface SignSelectorProps {
-  selected: ZodiacSignName;
+  selected: ZodiacSignName | "";
   onChange: (sign: ZodiacSignName) => void;
 }
 
 export function SignSelector({ selected, onChange }: SignSelectorProps) {
   return (
-    <div className="w-full overflow-x-auto scrollbar-hide">
-      <div className="flex gap-2 pb-1 min-w-max mx-auto justify-center flex-wrap px-4">
+    <div className="w-full">
+      <div className="flex flex-wrap gap-2 justify-center px-4">
         {ZODIAC_SIGNS.map((sign) => {
           const isActive = sign.name === selected;
           return (

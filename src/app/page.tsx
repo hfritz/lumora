@@ -17,9 +17,14 @@ interface QuoteData {
 }
 
 export default function Home() {
-  const [sign, setSign] = useState<ZodiacSignName>("Scorpio");
+  const [sign, setSign] = useState<ZodiacSignName | null>(null);
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
-  const [loadingQuote, setLoadingQuote] = useState(true);
+  const [loadingQuote, setLoadingQuote] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("lumora_sign") as ZodiacSignName | null;
+    if (saved) setSign(saved);
+  }, []);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loadingAnswer, setLoadingAnswer] = useState(false);
@@ -34,15 +39,20 @@ export default function Home() {
       const data = await res.json();
       setQuoteData(data);
     } catch {
-      // silent — card stays in loading state
+      // silent
     } finally {
       setLoadingQuote(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchQuote(sign);
+    if (sign) fetchQuote(sign);
   }, [sign, fetchQuote]);
+
+  function handleSignChange(newSign: ZodiacSignName) {
+    setSign(newSign);
+    localStorage.setItem("lumora_sign", newSign);
+  }
 
   async function handleAsk(e: React.FormEvent) {
     e.preventDefault();
@@ -158,20 +168,22 @@ export default function Home() {
               className="text-4xl sm:text-5xl text-text-primary"
               style={{ fontFamily: "var(--font-cormorant)", fontWeight: 300 }}
             >
-              {sign}
+              {sign ?? "Pick your sign"}
             </h2>
           </div>
 
-          <SignSelector selected={sign} onChange={setSign} />
+          <SignSelector selected={sign ?? ""} onChange={handleSignChange} />
 
-          <QuoteCard
-            quote={quoteData?.quote ?? ""}
-            sign={sign}
-            moonPhase={quoteData?.moon_phase ?? ""}
-            moonSign={quoteData?.moon_sign ?? ""}
-            retrograde={quoteData?.retrograde ?? null}
-            loading={loadingQuote}
-          />
+          {sign && (
+            <QuoteCard
+              quote={quoteData?.quote ?? ""}
+              sign={sign}
+              moonPhase={quoteData?.moon_phase ?? ""}
+              moonSign={quoteData?.moon_sign ?? ""}
+              retrograde={quoteData?.retrograde ?? null}
+              loading={loadingQuote}
+            />
+          )}
         </section>
 
         <div className="w-full max-w-xs mx-auto border-t border-gold-light" />
@@ -256,7 +268,7 @@ export default function Home() {
                   Your daily cosmic quote
                 </h2>
                 <p className="text-sm text-text-secondary mt-1 font-sans">
-                  Delivered every morning for {sign}. Free, always.
+                  Delivered every morning for {sign ?? "your sign"}. Free, always.
                 </p>
               </div>
 
