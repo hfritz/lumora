@@ -121,4 +121,4 @@ After reaching 50 subscribers: survey 5–10 on what they open most (quote vs. Q
 
 ## Open Questions
 
-- [ ] PWA manifest and service worker — use `next-pwa` package or manual setup?
+None — all resolved.

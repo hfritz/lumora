@@ -324,6 +324,6 @@ The conversion path from visitor to confirmed subscriber:
 
 ---
 
-## Open Questions
+## Decisions Made
 
-- [ ] PWA manifest and service worker — use `next-pwa` package or manual setup?
+- **PWA setup:** `next-pwa` package — handles service worker automatically, sufficient for v1.
