@@ -70,7 +70,7 @@ interface ChipProps {
 
 function Chip({ label, icon, primary, secondary, meaning }: ChipProps) {
   return (
-    <div className="flex flex-col items-center gap-1 px-4 py-3 rounded-2xl border border-gold-light/50 bg-white/30 min-w-[90px] max-w-[160px]">
+    <div className="flex flex-col items-center gap-1 px-2 py-3 rounded-2xl border border-gold-light/50 bg-white/30 flex-1 min-w-0">
       <span className="text-[9px] font-sans tracking-widest uppercase text-text-muted">
         {label}
       </span>
@@ -140,7 +140,7 @@ export function QuoteCard({
           </p>
         )}
 
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
+        <div className="mt-6 flex flex-nowrap justify-center gap-2">
           <Chip
             label="Your Sign"
             icon={ZODIAC_EMOJIS[sign] ?? "✨"}

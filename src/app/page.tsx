@@ -18,9 +18,9 @@ interface QuoteData {
   retrograde: string | null;
 }
 
-function slowScrollTo(target: HTMLElement, duration = 1400) {
+function slowScrollTo(target: HTMLElement, duration = 1400, offset = 24) {
   const start = window.scrollY;
-  const end = target.getBoundingClientRect().top + start;
+  const end = target.getBoundingClientRect().top + start - offset;
   const startTime = performance.now();
   function ease(t: number) {
     return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -174,7 +174,8 @@ export default function Home() {
           </span>
           <a
             href="#subscribe"
-            className="text-xs font-sans font-medium tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-4 py-2 hover:border-white hover:text-white transition-colors"
+            onClick={(e) => { e.preventDefault(); const el = document.getElementById("subscribe"); if (el) slowScrollTo(el); }}
+            className="text-xs font-sans font-medium tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-4 py-2 hover:border-white hover:text-white transition-colors cursor-pointer"
           >
             Subscribe
           </a>
@@ -322,7 +323,7 @@ export default function Home() {
         <div className="w-full max-w-xs mx-auto border-t border-gold-light" />
 
         {/* Subscribe */}
-        <section id="subscribe" className="relative w-full rounded-2xl overflow-hidden mt-4"
+        <section id="subscribe" className="relative w-full rounded-2xl overflow-hidden mt-4 scroll-mt-10"
           style={{ background: "radial-gradient(ellipse at 60% 40%, #2a1a0e 0%, #140c08 55%, #0a0604 100%)" }}
         >
           <StarField />
