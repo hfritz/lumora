@@ -1,5 +1,6 @@
 interface QuoteCardProps {
   quote: string;
+  briefing: string | null;
   sign: string;
   moonPhase: string;
   moonSign: string;
@@ -93,6 +94,7 @@ function Chip({ label, icon, primary, secondary, meaning }: ChipProps) {
 
 export function QuoteCard({
   quote,
+  briefing,
   sign,
   moonPhase,
   moonSign,
@@ -161,6 +163,14 @@ export function QuoteCard({
             />
           )}
         </div>
+
+        {briefing && (
+          <div className="mt-5 pt-5 border-t border-gold-light/40">
+            <p className="text-sm font-sans text-text-secondary leading-relaxed text-center">
+              {briefing}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import { ZodiacSignName } from "@/data/signs";
 
 interface QuoteData {
   quote: string;
+  briefing: string | null;
   sign: string;
   date: string;
   moon_phase: string;
@@ -224,6 +225,7 @@ export default function Home() {
           {sign && (
             <QuoteCard
               quote={quoteData?.quote ?? ""}
+              briefing={quoteData?.briefing ?? null}
               sign={sign}
               moonPhase={quoteData?.moon_phase ?? ""}
               moonSign={quoteData?.moon_sign ?? ""}
@@ -342,6 +344,62 @@ export default function Home() {
           )}
         </section>
       </main>
+
+      {/* ── How it works ── */}
+      <section className="w-full max-w-4xl mx-auto px-6 py-16">
+        <div className="text-center mb-10">
+          <p className="text-xs font-sans tracking-widest uppercase text-text-muted mb-2">
+            The cosmic context
+          </p>
+          <h2
+            className="text-3xl sm:text-4xl text-text-primary"
+            style={{ fontFamily: "var(--font-cormorant)", fontWeight: 300 }}
+          >
+            Why these three things matter
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="flex flex-col items-center text-center px-4">
+            <span className="text-3xl mb-3">✨</span>
+            <h3
+              className="text-xl text-text-primary mb-2"
+              style={{ fontFamily: "var(--font-cormorant)", fontWeight: 400 }}
+            >
+              Your Sign
+            </h3>
+            <p className="text-sm font-sans text-text-secondary leading-relaxed">
+              Your sun sign is determined by where the sun was when you were born. It shapes your core personality, natural strengths, and the energy you move through life with. Your daily quote is written specifically for your sign.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center text-center px-4">
+            <span className="text-3xl mb-3">🌙</span>
+            <h3
+              className="text-xl text-text-primary mb-2"
+              style={{ fontFamily: "var(--font-cormorant)", fontWeight: 400 }}
+            >
+              The Moon
+            </h3>
+            <p className="text-sm font-sans text-text-secondary leading-relaxed">
+              The moon completes a full cycle every 29 days, moving through eight phases. Each phase carries a different energy — new moons are for starting, full moons for releasing, waxing phases for building, waning phases for letting go. Knowing where the moon is helps you work with the day instead of against it.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center text-center px-4">
+            <span className="text-3xl mb-3">☿</span>
+            <h3
+              className="text-xl text-text-primary mb-2"
+              style={{ fontFamily: "var(--font-cormorant)", fontWeight: 400 }}
+            >
+              Retrograde
+            </h3>
+            <p className="text-sm font-sans text-text-secondary leading-relaxed">
+              A planet goes retrograde when it appears to move backward in the sky — an optical effect that astrologers associate with a slowing or reversal of that planet's influence. Mercury retrograde (3–4 times a year) affects communication and thinking. When one is active, it's a nudge to review rather than rush.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {/* Footer */}
       <footer className="border-t border-gold-light py-6 px-6">

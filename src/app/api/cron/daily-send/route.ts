@@ -37,24 +37,31 @@ function isAuthorized(request: NextRequest): boolean {
   }
 }
 
-async function generateQuoteForSign(
+async function generateQuoteAndBriefingForSign(
   sign: string,
   date: string,
   groq: ReturnType<typeof createGroq>
-): Promise<string> {
+): Promise<{ quote: string; briefing: string }> {
   const moon = getMoonPhaseForDate(date);
   const retro = getActiveRetrogrades(date);
   const retroContext = retro ? `${retro} is active.` : "No major retrogrades active.";
 
   try {
-    const { text } = await generateText({
-      model: groq("llama-3.3-70b-versatile"),
-      system: `You are Lumora, a cosmic inspiration guide. Generate a single, short inspirational quote (1–2 sentences) for ${sign} that reflects today's cosmic energy. Today is ${date}. Moon phase: ${moon.phase} in ${moon.sign}. ${retroContext} The quote should feel warm, wise, and uplifting — not mystical jargon. No attribution. No quotation marks.`,
-      prompt: `Generate today's quote for ${sign}.`,
-    });
-    return text.trim();
+    const [quoteResult, briefingResult] = await Promise.all([
+      generateText({
+        model: groq("llama-3.3-70b-versatile"),
+        system: `You are Lumora, a cosmic inspiration guide. Generate a single, short inspirational quote (1–2 sentences) for ${sign} that reflects today's cosmic energy. Today is ${date}. Moon phase: ${moon.phase} in ${moon.sign}. ${retroContext} The quote should feel warm, wise, and uplifting — not mystical jargon. No attribution. No quotation marks.`,
+        prompt: `Generate today's quote for ${sign}.`,
+      }),
+      generateText({
+        model: groq("llama-3.3-70b-versatile"),
+        system: `You are Lumora, a cosmic guidance guide. Write a 2–3 sentence cosmic briefing for ${sign} for today (${date}). Explain how the ${moon.phase} moon in ${moon.sign}${retro ? ` and ${retro}` : ""} combine to shape today's energy specifically for ${sign}. Be practical and specific — tell the reader what this means for their day and what to do with it. Write directly to the reader using "you". Plain language, no jargon, warm tone.`,
+        prompt: `Write today's cosmic briefing for ${sign}.`,
+      }),
+    ]);
+    return { quote: quoteResult.text.trim(), briefing: briefingResult.text.trim() };
   } catch {
-    return FALLBACK_QUOTES[sign] ?? FALLBACK_QUOTES["Aries"];
+    return { quote: FALLBACK_QUOTES[sign] ?? FALLBACK_QUOTES["Aries"], briefing: "" };
   }
 }
 
@@ -84,7 +91,7 @@ export async function POST(request: NextRequest) {
   const moon = getMoonPhaseForDate(today);
   const retro = getActiveRetrogrades(today);
 
-  // Generate all 12 sign quotes
+  // Generate all 12 sign quotes + briefings
   const quotes: Record<string, string> = {};
   await Promise.all(
     ZODIAC_SIGNS.map(async ({ name }) => {
@@ -94,12 +101,12 @@ export async function POST(request: NextRequest) {
       if (cached) {
         quotes[name] = cached.quote;
       } else {
-        const quote = await generateQuoteForSign(name, today, groq);
+        const { quote, briefing } = await generateQuoteAndBriefingForSign(name, today, groq);
         quotes[name] = quote;
         await sql`
-          INSERT INTO daily_quotes (date, zodiac_sign, quote)
-          VALUES (${today}, ${name}, ${quote})
-          ON CONFLICT (date, zodiac_sign) DO UPDATE SET quote = EXCLUDED.quote
+          INSERT INTO daily_quotes (date, zodiac_sign, quote, briefing)
+          VALUES (${today}, ${name}, ${quote}, ${briefing || null})
+          ON CONFLICT (date, zodiac_sign) DO UPDATE SET quote = EXCLUDED.quote, briefing = EXCLUDED.briefing
         `;
       }
     })
