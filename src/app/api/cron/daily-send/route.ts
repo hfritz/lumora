@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "crypto";
 import { generateText } from "ai";
 import { createGroq } from "@ai-sdk/groq";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/brevo";
 import { getDb, isDbConfigured } from "@/lib/db";
 import { getMoonPhaseForDate, getActiveRetrogrades } from "@/lib/ephemeris";
 import { makeUnsubscribeToken } from "@/lib/tokens";
@@ -75,19 +75,14 @@ export async function POST(request: NextRequest) {
   }
 
   const groqKey = process.env.GROQ_API_KEY;
-  const resendKey = process.env.RESEND_API_KEY;
 
-  if (!groqKey || !resendKey) {
-    return NextResponse.json(
-      { error: "GROQ_API_KEY and RESEND_API_KEY required" },
-      { status: 503 }
-    );
+  if (!groqKey) {
+    return NextResponse.json({ error: "GROQ_API_KEY required" }, { status: 503 });
   }
 
   const today = new Date().toISOString().split("T")[0];
   const sql = getDb();
   const groq = createGroq({ apiKey: groqKey });
-  const resend = new Resend(resendKey);
   const moon = getMoonPhaseForDate(today);
   const retro = getActiveRetrogrades(today);
 
@@ -135,8 +130,7 @@ export async function POST(request: NextRequest) {
     const unsubUrl = `${APP_URL}/api/unsubscribe?email=${encodeURIComponent(sub.email)}&token=${unsubToken}`;
 
     try {
-      await resend.emails.send({
-        from: "Lumora <onboarding@resend.dev>",
+      await sendEmail({
         to: sub.email,
         subject: `Your ${sub.zodiac_sign} guide for ${today}`,
         headers: {

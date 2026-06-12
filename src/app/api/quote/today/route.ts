@@ -96,9 +96,22 @@ export async function GET(request: NextRequest) {
   `;
 
   if (cached) {
+    let briefing = cached.briefing ?? null;
+
+    if (!briefing) {
+      const generated = await generateQuoteAndBriefing(sign, today, moon, retro);
+      briefing = generated.briefing || null;
+      if (briefing) {
+        await sql`
+          UPDATE daily_quotes SET briefing = ${briefing}
+          WHERE date = ${today} AND zodiac_sign = ${sign}
+        `;
+      }
+    }
+
     return NextResponse.json({
       quote: cached.quote,
-      briefing: cached.briefing ?? null,
+      briefing,
       sign,
       date: today,
       moon_phase: moon.phase,

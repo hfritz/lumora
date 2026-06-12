@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
 import { getDb, isDbConfigured } from "@/lib/db";
 import { signConfirmToken, makeUnsubscribeToken } from "@/lib/tokens";
+import { sendEmail } from "@/lib/brevo";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3002";
 
@@ -46,22 +46,12 @@ export async function POST(request: NextRequest) {
     ON CONFLICT (email) DO UPDATE SET zodiac_sign = EXCLUDED.zodiac_sign
   `;
 
-  const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) {
-    return NextResponse.json({
-      status: "pending_email",
-      message: "Subscriber saved. Set RESEND_API_KEY to send confirmation emails.",
-    });
-  }
-
   const token = await signConfirmToken(email);
   const confirmUrl = `${APP_URL}/api/confirm?token=${token}`;
   const unsubToken = makeUnsubscribeToken(email);
   const unsubUrl = `${APP_URL}/api/unsubscribe?email=${encodeURIComponent(email)}&token=${unsubToken}`;
 
-  const resend = new Resend(resendKey);
-  const { error } = await resend.emails.send({
-    from: "Lumora <onboarding@resend.dev>",
+  const { error } = await sendEmail({
     to: email,
     subject: "Confirm your Lumora subscription",
     html: `
@@ -90,7 +80,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (error) {
-    console.error("[subscribe] Resend error:", error);
+    console.error("[subscribe] Brevo error:", error);
     return NextResponse.json({ error: "Failed to send confirmation email" }, { status: 500 });
   }
 
