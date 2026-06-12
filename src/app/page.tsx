@@ -301,7 +301,7 @@ export default function Home() {
                 <textarea
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="Is Mercury retrograde affecting me? Should I cut my hair today?"
+                  placeholder="Is Mercury retrograde affecting me? Should I sign a contract today?"
                   rows={3}
                   maxLength={500}
                   className="w-full rounded-xl bg-surface border border-gold-light px-4 py-3 text-sm text-text-primary placeholder:text-text-muted font-sans resize-none focus:outline-none focus:border-gold transition-colors"
@@ -365,23 +365,22 @@ export default function Home() {
                     <SignSelector selected="" onChange={handleSignChange} />
                   </div>
                 ) : (
-                  <form onSubmit={handleSubscribe} className="w-full space-y-3">
+                  <form onSubmit={handleSubscribe} className="w-full flex gap-3 items-center">
                     <input
                       type="email"
                       value={subscribeEmail}
                       onChange={(e) => setSubscribeEmail(e.target.value)}
                       placeholder="your@email.com"
                       required
-                      className="w-full rounded-xl px-4 text-sm font-sans focus:outline-none transition-colors text-white placeholder:text-white/40"
+                      className="flex-1 rounded-xl px-5 py-4 text-base font-sans focus:outline-none transition-colors text-white placeholder:text-white/40"
                       style={{
                         background: "rgba(255,255,255,0.08)",
                         border: "1px solid rgba(255,255,255,0.3)",
-                        height: "88px",
                       }}
                     />
                     <button
                       type="submit"
-                      className="w-full inline-flex items-center justify-center rounded-full border border-white/50 text-white/90 text-xs font-sans font-medium tracking-widest uppercase px-7 py-3 hover:bg-white/10 transition-colors cursor-pointer"
+                      className="shrink-0 inline-flex items-center justify-center rounded-full border border-white/50 text-white/90 text-xs font-sans font-medium tracking-widest uppercase px-7 py-4 hover:bg-white/10 transition-colors cursor-pointer"
                     >
                       Subscribe
                     </button>

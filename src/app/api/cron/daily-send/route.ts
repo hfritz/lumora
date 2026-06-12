@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     try {
       await resend.emails.send({
-        from: "Lumora <hello@lumora.app>",
+        from: "Lumora <onboarding@resend.dev>",
         to: sub.email,
         subject: `Your ${sub.zodiac_sign} guide for ${today}`,
         headers: {
@@ -144,12 +144,25 @@ export async function POST(request: NextRequest) {
           "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
         },
         html: `
-          <div style="font-family:Georgia,serif;max-width:480px;margin:0 auto;padding:40px 24px;background:#FAF7F2;color:#2C2420;">
-            <p style="font-size:24px;font-weight:300;letter-spacing:4px;color:#C9A96E;text-transform:uppercase;margin:0 0 32px;">Lumora</p>
-            <p style="font-size:13px;color:#B0A090;font-family:sans-serif;letter-spacing:1px;text-transform:uppercase;margin:0 0 16px;">${sub.zodiac_sign} · ${moon.phase} in ${moon.sign}${retro ? ` · ${retro}` : ""}</p>
-            <p style="font-size:22px;font-style:italic;line-height:1.7;color:#2C2420;margin:0 0 32px;">${quote}</p>
-            <a href="${APP_URL}" style="display:inline-block;border:1.5px solid #C9A96E;color:#C9A96E;text-decoration:none;padding:12px 28px;border-radius:999px;font-size:13px;letter-spacing:1px;font-family:sans-serif;">Open Lumora</a>
-            <p style="font-size:11px;color:#B0A090;margin-top:40px;font-family:sans-serif;"><a href="${unsubUrl}" style="color:#B0A090;">Unsubscribe</a></p>
+          <div style="font-family:Georgia,serif;max-width:480px;margin:0 auto;background:#FAF7F2;color:#2C2420;">
+            <!-- Hero image header -->
+            <img src="${APP_URL}/hero.jpg" width="480" height="220" alt="" style="width:100%;max-width:480px;height:220px;display:block;object-fit:cover;object-position:center 20%;">
+            <!-- Brand -->
+            <div style="padding:28px 32px 0;text-align:center;">
+              <p style="font-size:11px;color:#B0A090;font-family:sans-serif;letter-spacing:3px;text-transform:uppercase;margin:0 0 6px;">Your daily cosmic guide</p>
+              <p style="font-size:20px;font-weight:300;letter-spacing:6px;color:#C9A96E;text-transform:uppercase;margin:0;">Lumora</p>
+            </div>
+            <!-- Body -->
+            <div style="padding:32px 32px 40px;">
+              <div style="border-top:1px solid #E8D5B0;margin:0 0 24px;"></div>
+              <p style="font-size:11px;color:#B0A090;font-family:sans-serif;letter-spacing:1.5px;text-transform:uppercase;margin:0 0 24px;">${sub.zodiac_sign} · ${moon.phase} in ${moon.sign}${retro ? ` · ${retro}` : ""}</p>
+              <p style="font-size:20px;font-style:italic;line-height:1.8;color:#2C2420;margin:0 0 40px;">${quote}</p>
+              <a href="${APP_URL}" style="display:inline-block;border:1.5px solid #C9A96E;color:#C9A96E;text-decoration:none;padding:12px 28px;border-radius:999px;font-size:12px;letter-spacing:2px;font-family:sans-serif;text-transform:uppercase;">Open Lumora</a>
+            </div>
+            <!-- Footer -->
+            <div style="background:#E8E3DA;padding:20px 32px;">
+              <p style="font-size:11px;color:#B0A090;font-family:sans-serif;margin:0;"><a href="${unsubUrl}" style="color:#B0A090;">Unsubscribe</a></p>
+            </div>
           </div>
         `,
       });
