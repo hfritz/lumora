@@ -104,7 +104,7 @@ export function QuoteCard({
   const retroData = retrograde ? parseRetrograde(retrograde) : null;
 
   return (
-    <div className="relative w-full max-w-xl mx-auto">
+    <div className="relative w-full mx-auto">
       {/* Decorative orb */}
       <div
         className="absolute inset-0 -z-10 rounded-3xl"
