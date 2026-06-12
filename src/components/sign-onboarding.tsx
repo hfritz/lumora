@@ -45,7 +45,7 @@ export function SignOnboarding({ onComplete }: SignOnboardingProps) {
             <button
               key={sign.name}
               onClick={() => handleSelect(sign.name)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-sans border border-white/20 text-white/70 hover:border-white/60 hover:text-white hover:bg-white/10 transition-all duration-150 whitespace-nowrap"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-sans border border-white/20 text-white/70 hover:border-white/60 hover:text-white hover:bg-white/10 transition-all duration-150 whitespace-nowrap cursor-pointer"
             >
               <span className="text-base leading-none">{sign.symbol}</span>
               <span className="text-xs font-medium tracking-wide">{sign.name}</span>

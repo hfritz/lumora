@@ -19,7 +19,7 @@ export function SignSelector({ selected, onChange }: SignSelectorProps) {
               onClick={() => onChange(sign.name)}
               className={`
                 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-sans
-                transition-all duration-150 whitespace-nowrap
+                transition-all duration-150 whitespace-nowrap cursor-pointer
                 ${
                   isActive
                     ? "bg-gold text-background font-medium shadow-sm"

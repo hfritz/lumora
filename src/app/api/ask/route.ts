@@ -4,8 +4,7 @@ import { createGroq } from "@ai-sdk/groq";
 import { getDb, isDbConfigured } from "@/lib/db";
 import { getCosmicContext } from "@/lib/ephemeris";
 
-const DAILY_LIMIT_ANONYMOUS = 1;
-const DAILY_LIMIT_SUBSCRIBER = 5;
+const DAILY_LIMIT = 2;
 
 function getClientIp(request: NextRequest): string {
   return (
@@ -25,14 +24,6 @@ async function getQuestionCount(key: string): Promise<number> {
   return Number(row?.count ?? 0);
 }
 
-async function isSubscriber(email: string): Promise<boolean> {
-  if (!isDbConfigured()) return false;
-  const sql = getDb();
-  const [row] = await sql`
-    SELECT id FROM subscribers WHERE email = ${email} AND confirmed = true
-  `;
-  return !!row;
-}
 
 async function logQuestion(key: string): Promise<void> {
   if (!isDbConfigured()) return;
@@ -41,41 +32,29 @@ async function logQuestion(key: string): Promise<void> {
 }
 
 export async function POST(request: NextRequest) {
-  let body: { email?: string; question?: string };
+  let body: { question?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const email = (body.email ?? "").trim().toLowerCase();
   const question = (body.question ?? "").trim().slice(0, 500);
 
   if (!question) {
     return NextResponse.json({ error: "Question is required" }, { status: 400 });
   }
-  if (!email) {
-    return NextResponse.json({ error: "Email is required" }, { status: 400 });
-  }
 
-  // Subscribers are rate-limited by email (confirmed account).
-  // Anonymous users are rate-limited by IP so changing email doesn't bypass the limit.
-  const subscriber = await isSubscriber(email);
-  const rateLimitKey = subscriber ? email : getClientIp(request);
-  const limit = subscriber ? DAILY_LIMIT_SUBSCRIBER : DAILY_LIMIT_ANONYMOUS;
-
+  const rateLimitKey = getClientIp(request);
   const count = await getQuestionCount(rateLimitKey);
-  const remaining = Math.max(0, limit - count);
+  const remaining = Math.max(0, DAILY_LIMIT - count);
 
-  if (count >= limit) {
+  if (count >= DAILY_LIMIT) {
     return NextResponse.json(
       {
         error: "daily_limit_reached",
-        message: subscriber
-          ? "You've used all your questions for today. Come back tomorrow."
-          : "You've used your free question for today. Subscribe for 5 questions per day.",
+        message: "You've used both your questions for today. Come back tomorrow.",
         questions_remaining: 0,
-        is_subscriber: subscriber,
       },
       { status: 429 }
     );
@@ -86,7 +65,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       answer: "The stars are aligning — set up GROQ_API_KEY to enable cosmic Q&A.",
       questions_remaining: remaining - 1,
-      is_subscriber: subscriber,
     });
   }
 
@@ -106,7 +84,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       answer: text,
       questions_remaining: remaining - 1,
-      is_subscriber: subscriber,
     });
   } catch {
     return NextResponse.json(

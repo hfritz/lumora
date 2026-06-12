@@ -63,10 +63,9 @@ export default function Home() {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loadingAnswer, setLoadingAnswer] = useState(false);
-  const [askEmail, setAskEmail] = useState("");
-  const [showAskEmail, setShowAskEmail] = useState(false);
   const [subscribeEmail, setSubscribeEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [questionsRemaining, setQuestionsRemaining] = useState<number | null>(null);
 
   const fetchQuote = useCallback(async (selectedSign: ZodiacSignName) => {
     setLoadingQuote(true);
@@ -110,13 +109,11 @@ export default function Home() {
       const res = await fetch("/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          question,
-          email: askEmail || "anonymous@lumora.app",
-        }),
+        body: JSON.stringify({ question }),
       });
       const data = await res.json();
       setAnswer(data.answer ?? data.message ?? data.error ?? "Something went wrong.");
+      if (data.questions_remaining !== undefined) setQuestionsRemaining(data.questions_remaining);
     } catch {
       setAnswer("The stars are quiet right now. Try again in a moment.");
     } finally {
@@ -214,7 +211,7 @@ export default function Home() {
           {sign && !selectorOpen ? (
             <button
               onClick={() => setSelectorOpen(true)}
-              className="flex items-center gap-2 text-xs font-sans tracking-widest uppercase text-text-muted hover:text-text-primary transition-colors"
+              className="flex items-center gap-2 text-xs font-sans tracking-widest uppercase text-text-muted hover:text-text-primary transition-colors cursor-pointer"
             >
               <span>Your sign: {sign}</span>
               <span className="text-gold-light">· Change</span>
@@ -247,129 +244,161 @@ export default function Home() {
 
         {/* Q&A */}
         <section className="flex flex-col items-center gap-6 py-12">
-          <div className="text-center">
-            <h2
-              className="text-3xl text-text-primary"
-              style={{ fontFamily: "var(--font-cormorant)", fontWeight: 400 }}
-            >
-              Ask the stars
-            </h2>
-            <p className="text-sm text-text-secondary mt-1 font-sans">
-              Cosmic questions only. One free question per day.
-            </p>
-          </div>
+          {answer ? (
+            <>
+              <div className="w-full text-center">
+                <p className="text-xs font-sans tracking-widest uppercase text-text-muted mb-2">
+                  You asked
+                </p>
+                <h2
+                  className="text-3xl text-text-primary capitalize"
+                  style={{ fontFamily: "var(--font-cormorant)", fontWeight: 400 }}
+                >
+                  {question}
+                </h2>
+              </div>
 
-          <form onSubmit={handleAsk} className="w-full max-w-lg space-y-3">
-            <textarea
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              placeholder="Is Mercury retrograde affecting me? Should I cut my hair today?"
-              rows={3}
-              maxLength={500}
-              className="w-full rounded-xl bg-surface border border-gold-light px-4 py-3 text-sm text-text-primary placeholder:text-text-muted font-sans resize-none focus:outline-none focus:border-gold transition-colors"
-            />
-            <button
-              type="submit"
-              disabled={loadingAnswer || !question.trim()}
-              className="w-full rounded-full bg-gold text-background font-sans font-medium text-sm py-3 px-6 hover:bg-gold-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loadingAnswer ? "Reading the stars…" : "Ask"}
-            </button>
+              <div
+                className="w-full rounded-2xl border border-gold-light bg-surface p-6"
+                style={{ boxShadow: "0 0 32px rgba(201,169,110,0.18), 0 0 80px rgba(201,169,110,0.08)" }}
+              >
+                <p
+                  className="text-xl leading-relaxed text-text-primary italic"
+                  style={{ fontFamily: "var(--font-cormorant)" }}
+                >
+                  {answer}
+                </p>
+              </div>
 
-            {showAskEmail ? (
-              <input
-                type="email"
-                value={askEmail}
-                onChange={(e) => setAskEmail(e.target.value)}
-                placeholder="your@email.com"
-                autoFocus
-                className="w-full rounded-xl bg-surface border border-gold-light px-4 py-3 text-sm text-text-primary placeholder:text-text-muted font-sans focus:outline-none focus:border-gold transition-colors"
-              />
-            ) : (
+              {questionsRemaining === 1 && (
+                <p className="text-xs font-sans text-text-muted text-center">
+                  ✦ 1 question left today
+                </p>
+              )}
+
               <button
-                type="button"
-                onClick={() => setShowAskEmail(true)}
-                className="w-full text-xs font-sans tracking-widest uppercase text-text-muted hover:text-text-primary transition-colors py-1"
+                onClick={() => { setAnswer(""); setQuestion(""); setQuestionsRemaining(null); }}
+                className="text-xs font-sans tracking-widest uppercase text-text-muted hover:text-text-primary transition-colors cursor-pointer"
               >
-                Subscriber? Enter your email for 5 questions/day
+                Ask another
               </button>
-            )}
-          </form>
+            </>
+          ) : (
+            <>
+              <div className="text-center">
+                <h2
+                  className="text-3xl text-text-primary"
+                  style={{ fontFamily: "var(--font-cormorant)", fontWeight: 400 }}
+                >
+                  Ask the stars
+                </h2>
+                <p className="text-sm text-text-secondary mt-1 font-sans">
+                  Cosmic questions only. Two free questions per day.
+                </p>
+              </div>
 
-          {answer && (
-            <div className="w-full max-w-lg rounded-2xl border border-gold-light bg-surface p-6">
-              <p
-                className="text-xl leading-relaxed text-text-primary italic"
-                style={{ fontFamily: "var(--font-cormorant)" }}
-              >
-                {answer}
-              </p>
-            </div>
+              <form onSubmit={handleAsk} className="w-full space-y-3">
+                <textarea
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  placeholder="Is Mercury retrograde affecting me? Should I cut my hair today?"
+                  rows={3}
+                  maxLength={500}
+                  className="w-full rounded-xl bg-surface border border-gold-light px-4 py-3 text-sm text-text-primary placeholder:text-text-muted font-sans resize-none focus:outline-none focus:border-gold transition-colors"
+                />
+                <button
+                  type="submit"
+                  disabled={loadingAnswer || !question.trim()}
+                  className="w-full rounded-full bg-gold text-background font-sans font-medium text-sm py-3 px-6 hover:bg-gold-dark transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loadingAnswer ? "Reading the stars…" : "Ask"}
+                </button>
+
+              </form>
+            </>
           )}
         </section>
 
         <div className="w-full max-w-xs mx-auto border-t border-gold-light" />
 
         {/* Subscribe */}
-        <section id="subscribe" className="flex flex-col items-center gap-6 py-12">
-          {subscribed ? (
-            <div className="text-center space-y-2">
-              <p
-                className="text-3xl text-text-primary"
-                style={{ fontFamily: "var(--font-cormorant)" }}
-              >
-                Check your inbox.
-              </p>
-              <p className="text-sm text-text-secondary font-sans">
-                A confirmation is on its way. Your daily guide starts tomorrow.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="text-center">
-                <h2
-                  className="text-3xl text-text-primary"
-                  style={{
-                    fontFamily: "var(--font-cormorant)",
-                    fontWeight: 400,
-                  }}
+        <section id="subscribe" className="relative w-full rounded-2xl overflow-hidden mt-4"
+          style={{ background: "radial-gradient(ellipse at 60% 40%, #2a1a0e 0%, #140c08 55%, #0a0604 100%)" }}
+        >
+          <StarField />
+
+          <div className="relative z-10 flex flex-col items-center gap-7 px-8 py-16">
+            {subscribed ? (
+              <div className="text-center space-y-2">
+                <p
+                  className="text-4xl text-white"
+                  style={{ fontFamily: "var(--font-cormorant)", fontWeight: 300 }}
                 >
-                  Your daily cosmic quote
-                </h2>
-                <p className="text-sm text-text-secondary mt-1 font-sans">
-                  Delivered every morning for {sign ?? "your sign"}. Free, always.
+                  Check your inbox.
+                </p>
+                <p className="text-sm font-sans text-white/60">
+                  A confirmation is on its way. Your daily guide starts tomorrow.
                 </p>
               </div>
+            ) : (
+              <>
+                <div className="text-center space-y-3">
+                  <p className="text-xs font-sans tracking-widest uppercase text-white/60">
+                    Your daily cosmic guide
+                  </p>
+                  <h2
+                    className="text-4xl sm:text-5xl text-white leading-tight"
+                    style={{ fontFamily: "var(--font-cormorant)", fontWeight: 300 }}
+                  >
+                    Wake up to the cosmos
+                  </h2>
+                  <p className="text-sm font-sans max-w-xs mx-auto leading-relaxed text-white/65">
+                    Your daily reading for {sign ?? "your sign"} — moon phase, planetary weather, and a quote — delivered every morning. Free, always.
+                  </p>
+                </div>
 
-              <form
-                onSubmit={handleSubscribe}
-                className="w-full max-w-sm space-y-3"
-              >
-                <input
-                  type="email"
-                  value={subscribeEmail}
-                  onChange={(e) => setSubscribeEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  required
-                  className="w-full rounded-xl bg-surface border border-gold-light px-4 py-3 text-sm text-text-primary placeholder:text-text-muted font-sans focus:outline-none focus:border-gold transition-colors"
-                />
-                <button
-                  type="submit"
-                  className="w-full rounded-full bg-gold text-background font-sans font-medium text-sm py-3 px-6 hover:bg-gold-dark transition-colors"
-                >
-                  Subscribe
-                </button>
-              </form>
-            </>
-          )}
+                {!sign ? (
+                  <div className="flex flex-col items-center gap-3 w-full">
+                    <p className="text-xs font-sans tracking-widest uppercase text-white/50">
+                      First, pick your sign
+                    </p>
+                    <SignSelector selected="" onChange={handleSignChange} />
+                  </div>
+                ) : (
+                  <form onSubmit={handleSubscribe} className="w-full space-y-3">
+                    <input
+                      type="email"
+                      value={subscribeEmail}
+                      onChange={(e) => setSubscribeEmail(e.target.value)}
+                      placeholder="your@email.com"
+                      required
+                      className="w-full rounded-xl px-4 text-sm font-sans focus:outline-none transition-colors text-white placeholder:text-white/40"
+                      style={{
+                        background: "rgba(255,255,255,0.08)",
+                        border: "1px solid rgba(255,255,255,0.3)",
+                        height: "88px",
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      className="w-full inline-flex items-center justify-center rounded-full border border-white/50 text-white/90 text-xs font-sans font-medium tracking-widest uppercase px-7 py-3 hover:bg-white/10 transition-colors cursor-pointer"
+                    >
+                      Subscribe
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
+          </div>
         </section>
       </main>
 
       {/* ── How it works ── */}
-      <section className="w-full max-w-4xl mx-auto px-6 py-16">
+      <section className="w-full bg-surface py-16">
+        <div className="max-w-4xl mx-auto px-6">
         <div className="text-center mb-10">
           <p className="text-xs font-sans tracking-widest uppercase text-text-muted mb-2">
-            The cosmic context
+            About the cosmic context
           </p>
           <h2
             className="text-3xl sm:text-4xl text-text-primary"
@@ -418,6 +447,7 @@ export default function Home() {
               A planet goes retrograde when it appears to move backward in the sky — an optical effect that astrologers associate with a slowing or reversal of that planet's influence. Mercury retrograde (3–4 times a year) affects communication and thinking. When one is active, it's a nudge to review rather than rush.
             </p>
           </div>
+        </div>
         </div>
       </section>
 
