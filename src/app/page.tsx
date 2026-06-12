@@ -36,6 +36,7 @@ function slowScrollTo(target: HTMLElement, duration = 1400) {
 export default function Home() {
   const [sign, setSign] = useState<ZodiacSignName | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [selectorOpen, setSelectorOpen] = useState(false);
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const guideRef = useRef<HTMLElement>(null);
@@ -86,6 +87,7 @@ export default function Home() {
   function handleSignChange(newSign: ZodiacSignName) {
     setSign(newSign);
     localStorage.setItem("lumora_sign", newSign);
+    setSelectorOpen(false);
   }
 
   function handleOnboardingComplete(newSign: ZodiacSignName) {
@@ -208,19 +210,24 @@ export default function Home() {
       <main ref={guideRef} id="guide" className="guide-section flex flex-col flex-1 w-full max-w-4xl mx-auto px-4 pb-16 -mt-4">
         {/* Sign selector */}
         <section className="flex flex-col items-center gap-6 pt-6 pb-10">
-          <div className="text-center space-y-1">
-            <p className="text-xs font-sans tracking-widest uppercase text-text-muted">
-              Your sign
-            </p>
-            <h2
-              className="text-4xl sm:text-5xl text-text-primary"
-              style={{ fontFamily: "var(--font-cormorant)", fontWeight: 300 }}
+          {sign && !selectorOpen ? (
+            <button
+              onClick={() => setSelectorOpen(true)}
+              className="flex items-center gap-2 text-xs font-sans tracking-widest uppercase text-text-muted hover:text-text-primary transition-colors"
             >
-              {sign ?? "Pick your sign"}
-            </h2>
-          </div>
-
-          <SignSelector selected={sign ?? ""} onChange={handleSignChange} />
+              <span>Your sign: {sign}</span>
+              <span className="text-gold-light">· Change</span>
+            </button>
+          ) : (
+            <div className="flex flex-col items-center gap-6 w-full">
+              <div className="text-center space-y-1">
+                <p className="text-xs font-sans tracking-widest uppercase text-text-muted">
+                  {sign ? "Change your sign" : "Pick your sign"}
+                </p>
+              </div>
+              <SignSelector selected={sign ?? ""} onChange={handleSignChange} />
+            </div>
+          )}
 
           {sign && (
             <QuoteCard

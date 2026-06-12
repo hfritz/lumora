@@ -118,7 +118,7 @@ export function QuoteCard({
 
       {/* Card */}
       <div
-        className="rounded-2xl border border-gold-light/60 p-8 sm:p-10 text-center"
+        className="rounded-2xl border border-gold-light/60 p-6 sm:p-8 text-center"
         style={{
           background: "rgba(250,247,242,0.70)",
           backdropFilter: "blur(12px)",
