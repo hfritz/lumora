@@ -5,6 +5,7 @@ import Image from "next/image";
 import { SignSelector } from "@/components/sign-selector";
 import { QuoteCard } from "@/components/quote-card";
 import { StarField } from "@/components/star-field";
+import { SignOnboarding } from "@/components/sign-onboarding";
 import { ZodiacSignName } from "@/data/signs";
 
 interface QuoteData {
@@ -33,13 +34,18 @@ function slowScrollTo(target: HTMLElement, duration = 1400) {
 
 export default function Home() {
   const [sign, setSign] = useState<ZodiacSignName | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const guideRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("lumora_sign") as ZodiacSignName | null;
-    if (saved) setSign(saved);
+    if (saved) {
+      setSign(saved);
+    } else {
+      setShowOnboarding(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -79,6 +85,16 @@ export default function Home() {
   function handleSignChange(newSign: ZodiacSignName) {
     setSign(newSign);
     localStorage.setItem("lumora_sign", newSign);
+  }
+
+  function handleOnboardingComplete(newSign: ZodiacSignName) {
+    setSign(newSign);
+    localStorage.setItem("lumora_sign", newSign);
+    setShowOnboarding(false);
+    setTimeout(() => {
+      const el = document.getElementById("guide");
+      if (el) slowScrollTo(el, 1000);
+    }, 100);
   }
 
   async function handleAsk(e: React.FormEvent) {
@@ -121,6 +137,10 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
+      {showOnboarding && (
+        <SignOnboarding onComplete={handleOnboardingComplete} />
+      )}
+
       {/* ── Hero ── */}
       <section className="relative flex flex-col min-h-screen">
         {/* Background image */}
