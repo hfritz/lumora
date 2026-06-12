@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { getDb, isDbConfigured } from "@/lib/db";
 import { verifyConfirmToken } from "@/lib/tokens";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3002";
@@ -27,22 +27,12 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  if (!isSupabaseConfigured()) {
+  if (!isDbConfigured()) {
     return NextResponse.redirect(`${APP_URL}/welcome`);
   }
 
-  const supabase = getSupabase();
-  const { error } = await supabase
-    .from("subscribers")
-    .update({ confirmed: true })
-    .eq("email", email);
-
-  if (error) {
-    return new NextResponse(errorPage("Something went wrong. Please try again."), {
-      status: 500,
-      headers: { "Content-Type": "text/html" },
-    });
-  }
+  const sql = getDb();
+  await sql`UPDATE subscribers SET confirmed = true WHERE email = ${email}`;
 
   return NextResponse.redirect(`${APP_URL}/welcome`);
 }

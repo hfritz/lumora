@@ -3,7 +3,7 @@ import { timingSafeEqual } from "crypto";
 import { generateText } from "ai";
 import { createGroq } from "@ai-sdk/groq";
 import { Resend } from "resend";
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { getDb, isDbConfigured } from "@/lib/db";
 import { getMoonPhaseForDate, getActiveRetrogrades } from "@/lib/ephemeris";
 import { makeUnsubscribeToken } from "@/lib/tokens";
 import { ZODIAC_SIGNS } from "@/data/signs";
@@ -63,8 +63,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!isSupabaseConfigured()) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
+  if (!isDbConfigured()) {
+    return NextResponse.json({ error: "DATABASE_URL not configured" }, { status: 503 });
   }
 
   const groqKey = process.env.GROQ_API_KEY;
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
   }
 
   const today = new Date().toISOString().split("T")[0];
-  const supabase = getSupabase();
+  const sql = getDb();
   const groq = createGroq({ apiKey: groqKey });
   const resend = new Resend(resendKey);
   const moon = getMoonPhaseForDate(today);
@@ -88,35 +88,27 @@ export async function POST(request: NextRequest) {
   const quotes: Record<string, string> = {};
   await Promise.all(
     ZODIAC_SIGNS.map(async ({ name }) => {
-      // Check cache first
-      const { data: cached } = await supabase
-        .from("daily_quotes")
-        .select("quote")
-        .eq("date", today)
-        .eq("zodiac_sign", name)
-        .single();
-
+      const [cached] = await sql`
+        SELECT quote FROM daily_quotes WHERE date = ${today} AND zodiac_sign = ${name}
+      `;
       if (cached) {
         quotes[name] = cached.quote;
       } else {
         const quote = await generateQuoteForSign(name, today, groq);
         quotes[name] = quote;
-        await supabase
-          .from("daily_quotes")
-          .upsert({ date: today, zodiac_sign: name, quote });
+        await sql`
+          INSERT INTO daily_quotes (date, zodiac_sign, quote)
+          VALUES (${today}, ${name}, ${quote})
+          ON CONFLICT (date, zodiac_sign) DO UPDATE SET quote = EXCLUDED.quote
+        `;
       }
     })
   );
 
   // Fetch confirmed subscribers
-  const { data: subscribers, error } = await supabase
-    .from("subscribers")
-    .select("email, zodiac_sign")
-    .eq("confirmed", true);
-
-  if (error || !subscribers) {
-    return NextResponse.json({ error: "Failed to fetch subscribers" }, { status: 500 });
-  }
+  const subscribers = await sql`
+    SELECT email, zodiac_sign FROM subscribers WHERE confirmed = true
+  `;
 
   // Resend free tier: 100 emails/day
   const DAILY_EMAIL_CAP = 100;

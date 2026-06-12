@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { getDb, isDbConfigured } from "@/lib/db";
 import { signConfirmToken, makeUnsubscribeToken } from "@/lib/tokens";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3002";
@@ -23,33 +23,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Zodiac sign required" }, { status: 400 });
   }
 
-  if (!isSupabaseConfigured()) {
+  if (!isDbConfigured()) {
     return NextResponse.json({
       status: "mock",
-      message: "Set up SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to enable subscriptions.",
+      message: "Set up DATABASE_URL to enable subscriptions.",
     });
   }
 
-  const supabase = getSupabase();
+  const sql = getDb();
 
-  const { data: existing } = await supabase
-    .from("subscribers")
-    .select("id, confirmed")
-    .eq("email", email)
-    .single();
+  const [existing] = await sql`
+    SELECT id, confirmed FROM subscribers WHERE email = ${email}
+  `;
 
   if (existing?.confirmed) {
     return NextResponse.json({ status: "already_subscribed" });
   }
 
-  const { error } = await supabase.from("subscribers").upsert(
-    { email, zodiac_sign, confirmed: false },
-    { onConflict: "email" }
-  );
-
-  if (error) {
-    return NextResponse.json({ error: "Subscription failed" }, { status: 500 });
-  }
+  await sql`
+    INSERT INTO subscribers (email, zodiac_sign, confirmed)
+    VALUES (${email}, ${zodiac_sign}, false)
+    ON CONFLICT (email) DO UPDATE SET zodiac_sign = EXCLUDED.zodiac_sign
+  `;
 
   const resendKey = process.env.RESEND_API_KEY;
   if (!resendKey) {

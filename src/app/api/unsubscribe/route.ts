@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { getDb, isDbConfigured } from "@/lib/db";
 import { verifyUnsubscribeToken } from "@/lib/tokens";
 
 export async function GET(request: NextRequest) {
@@ -13,9 +13,9 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  if (isSupabaseConfigured()) {
-    const supabase = getSupabase();
-    await supabase.from("subscribers").delete().eq("email", email);
+  if (isDbConfigured()) {
+    const sql = getDb();
+    await sql`DELETE FROM subscribers WHERE email = ${email}`;
   }
 
   return new NextResponse(page("You've been unsubscribed.", true), {

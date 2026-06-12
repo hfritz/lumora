@@ -1,39 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateText } from "ai";
 import { createGroq } from "@ai-sdk/groq";
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
+import { getDb, isDbConfigured } from "@/lib/db";
 import { getCosmicContext } from "@/lib/ephemeris";
 
 const DAILY_LIMIT_ANONYMOUS = 1;
 const DAILY_LIMIT_SUBSCRIBER = 5;
 
 async function getQuestionCount(email: string): Promise<number> {
-  if (!isSupabaseConfigured()) return 0;
-  const supabase = getSupabase();
-  const { count } = await supabase
-    .from("question_log")
-    .select("*", { count: "exact", head: true })
-    .eq("email", email)
-    .gte("asked_at", new Date().toISOString().split("T")[0]);
-  return count ?? 0;
+  if (!isDbConfigured()) return 0;
+  const sql = getDb();
+  const [row] = await sql`
+    SELECT COUNT(*) AS count FROM question_log
+    WHERE email = ${email} AND asked_at >= CURRENT_DATE
+  `;
+  return Number(row?.count ?? 0);
 }
 
 async function isSubscriber(email: string): Promise<boolean> {
-  if (!isSupabaseConfigured()) return false;
-  const supabase = getSupabase();
-  const { data } = await supabase
-    .from("subscribers")
-    .select("id")
-    .eq("email", email)
-    .eq("confirmed", true)
-    .single();
-  return !!data;
+  if (!isDbConfigured()) return false;
+  const sql = getDb();
+  const [row] = await sql`
+    SELECT id FROM subscribers WHERE email = ${email} AND confirmed = true
+  `;
+  return !!row;
 }
 
 async function logQuestion(email: string): Promise<void> {
-  if (!isSupabaseConfigured()) return;
-  const supabase = getSupabase();
-  await supabase.from("question_log").insert({ email });
+  if (!isDbConfigured()) return;
+  const sql = getDb();
+  await sql`INSERT INTO question_log (email) VALUES (${email})`;
 }
 
 export async function POST(request: NextRequest) {
@@ -78,14 +74,11 @@ export async function POST(request: NextRequest) {
 
   const groqKey = process.env.GROQ_API_KEY;
   if (!groqKey) {
-    return NextResponse.json(
-      {
-        answer:
-          "The stars are aligning — set up GROQ_API_KEY to enable cosmic Q&A.",
-        questions_remaining: remaining - 1,
-        is_subscriber: subscriber,
-      }
-    );
+    return NextResponse.json({
+      answer: "The stars are aligning — set up GROQ_API_KEY to enable cosmic Q&A.",
+      questions_remaining: remaining - 1,
+      is_subscriber: subscriber,
+    });
   }
 
   const today = new Date().toISOString().split("T")[0];
