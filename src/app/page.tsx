@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { SignSelector } from "@/components/sign-selector";
 import { QuoteCard } from "@/components/quote-card";
@@ -16,14 +16,41 @@ interface QuoteData {
   retrograde: string | null;
 }
 
+function slowScrollTo(target: HTMLElement, duration = 1400) {
+  const start = window.scrollY;
+  const end = target.getBoundingClientRect().top + start;
+  const startTime = performance.now();
+  function ease(t: number) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
+  function step(now: number) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    window.scrollTo(0, start + (end - start) * ease(progress));
+    if (progress < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
 export default function Home() {
   const [sign, setSign] = useState<ZodiacSignName | null>(null);
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
+  const guideRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("lumora_sign") as ZodiacSignName | null;
     if (saved) setSign(saved);
+  }, []);
+
+  useEffect(() => {
+    const el = guideRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { el.classList.add("is-revealed"); observer.disconnect(); } },
+      { threshold: 0.05 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -147,17 +174,17 @@ export default function Home() {
             Astrology, moon phases, and AI-powered guidance — delivered every
             morning.
           </p>
-          <a
-            href="#guide"
-            className="mt-8 inline-flex items-center gap-2 rounded-full border border-white/50 text-white/90 text-xs font-sans font-medium tracking-widest uppercase px-7 py-3 hover:bg-white/10 transition-colors"
+          <button
+            onClick={() => { const el = document.getElementById("guide"); if (el) slowScrollTo(el); }}
+            className="mt-8 inline-flex items-center gap-2 rounded-full border border-white/50 text-white/90 text-xs font-sans font-medium tracking-widest uppercase px-7 py-3 hover:bg-white/10 transition-colors cursor-pointer"
           >
             Read your guide
-          </a>
+          </button>
         </div>
       </section>
 
       {/* ── Guide ── */}
-      <main id="guide" className="flex flex-col flex-1 w-full max-w-4xl mx-auto px-4 pb-16 -mt-4">
+      <main ref={guideRef} id="guide" className="guide-section flex flex-col flex-1 w-full max-w-4xl mx-auto px-4 pb-16 -mt-4">
         {/* Sign selector */}
         <section className="flex flex-col items-center gap-6 pt-6 pb-10">
           <div className="text-center space-y-1">

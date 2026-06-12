@@ -7,6 +7,90 @@ interface QuoteCardProps {
   loading?: boolean;
 }
 
+const ZODIAC_EMOJIS: Record<string, string> = {
+  Aries: "♈", Taurus: "♉", Gemini: "♊", Cancer: "♋",
+  Leo: "♌", Virgo: "♍", Libra: "♎", Scorpio: "♏",
+  Sagittarius: "♐", Capricorn: "♑", Aquarius: "♒", Pisces: "♓",
+};
+
+const MOON_EMOJIS: Record<string, string> = {
+  "New Moon": "🌑",
+  "Waxing Crescent": "🌒",
+  "First Quarter": "🌓",
+  "Waxing Gibbous": "🌔",
+  "Full Moon": "🌕",
+  "Waning Gibbous": "🌖",
+  "Last Quarter": "🌗",
+  "Waning Crescent": "🌘",
+};
+
+const PLANET_EMOJIS: Record<string, string> = {
+  Mercury: "☿", Venus: "♀", Mars: "♂",
+  Jupiter: "♃", Saturn: "♄", Uranus: "♅",
+  Neptune: "♆", Pluto: "♇",
+};
+
+const MOON_MEANINGS: Record<string, string> = {
+  "New Moon": "Fresh start, set intentions",
+  "Waxing Crescent": "Plant seeds, take first steps",
+  "First Quarter": "Push through resistance",
+  "Waxing Gibbous": "Refine & build momentum",
+  "Full Moon": "Peak energy, release & celebrate",
+  "Waning Gibbous": "Reflect & share what you've learned",
+  "Last Quarter": "Let go of what no longer serves",
+  "Waning Crescent": "Rest, restore, prepare to begin again",
+};
+
+const PLANET_MEANINGS: Record<string, string> = {
+  Mercury: "Communication & thinking feel off — review, don't rush",
+  Venus: "Love & values need revisiting",
+  Mars: "Pause on bold moves & confrontations",
+  Jupiter: "Growth plans may need a rethink",
+  Saturn: "Rules & structures are up for review",
+  Uranus: "Expect the unexpected in routines",
+  Neptune: "Intuition is foggy — trust slowly",
+  Pluto: "Deep transformation is being reconsidered",
+};
+
+function parseRetrograde(retrograde: string): { planet: string; sign: string } {
+  const match = retrograde.match(/^(\w+) retrograde in (\w+)/);
+  return match
+    ? { planet: match[1], sign: match[2] }
+    : { planet: retrograde, sign: "" };
+}
+
+interface ChipProps {
+  label: string;
+  icon: string;
+  primary: string;
+  secondary?: string;
+  meaning?: string;
+}
+
+function Chip({ label, icon, primary, secondary, meaning }: ChipProps) {
+  return (
+    <div className="flex flex-col items-center gap-1 px-4 py-3 rounded-2xl border border-gold-light/50 bg-white/30 min-w-[90px] max-w-[160px]">
+      <span className="text-[9px] font-sans tracking-widest uppercase text-text-muted">
+        {label}
+      </span>
+      <span className="text-base leading-none">{icon}</span>
+      <span className="text-xs font-sans text-text-primary text-center leading-tight">
+        {primary}
+      </span>
+      {secondary && (
+        <span className="text-[10px] font-sans text-text-muted text-center leading-tight">
+          {secondary}
+        </span>
+      )}
+      {meaning && (
+        <span className="mt-1 text-[10px] font-sans text-text-muted text-center leading-tight italic border-t border-gold-light/40 pt-1 w-full">
+          {meaning}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function QuoteCard({
   quote,
   sign,
@@ -15,6 +99,8 @@ export function QuoteCard({
   retrograde,
   loading = false,
 }: QuoteCardProps) {
+  const retroData = retrograde ? parseRetrograde(retrograde) : null;
+
   return (
     <div className="relative w-full max-w-xl mx-auto">
       {/* Decorative orb */}
@@ -52,17 +138,27 @@ export function QuoteCard({
           </p>
         )}
 
-        <div className="mt-6 flex items-center justify-center gap-3 text-xs text-text-muted font-sans tracking-wider uppercase">
-          <span>{sign}</span>
-          <span className="text-gold-light">·</span>
-          <span>
-            {moonPhase} in {moonSign}
-          </span>
-          {retrograde && (
-            <>
-              <span className="text-gold-light">·</span>
-              <span className="text-gold-dark">{retrograde}</span>
-            </>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <Chip
+            label="Your Sign"
+            icon={ZODIAC_EMOJIS[sign] ?? "✨"}
+            primary={sign}
+            meaning="Today's guidance is written for you"
+          />
+          <Chip
+            label="Moon"
+            icon={MOON_EMOJIS[moonPhase] ?? "🌙"}
+            primary={moonPhase}
+            secondary={`in ${moonSign}`}
+            meaning={MOON_MEANINGS[moonPhase]}
+          />
+          {retroData && (
+            <Chip
+              label="Retrograde"
+              icon={PLANET_EMOJIS[retroData.planet] ?? "↩"}
+              primary={`${retroData.planet} in ${retroData.sign}`}
+              meaning={PLANET_MEANINGS[retroData.planet]}
+            />
           )}
         </div>
       </div>

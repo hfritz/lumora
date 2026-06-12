@@ -103,3 +103,23 @@
     @apply font-sans;
   }
 }
+
+@keyframes guide-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.guide-section {
+  opacity: 0;
+  transform: translateY(28px);
+}
+
+.guide-section.is-revealed {
+  animation: guide-reveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
