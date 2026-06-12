@@ -64,6 +64,7 @@ export default function Home() {
   const [answer, setAnswer] = useState("");
   const [loadingAnswer, setLoadingAnswer] = useState(false);
   const [askEmail, setAskEmail] = useState("");
+  const [showAskEmail, setShowAskEmail] = useState(false);
   const [subscribeEmail, setSubscribeEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 
@@ -259,13 +260,6 @@ export default function Home() {
           </div>
 
           <form onSubmit={handleAsk} className="w-full max-w-lg space-y-3">
-            <input
-              type="email"
-              value={askEmail}
-              onChange={(e) => setAskEmail(e.target.value)}
-              placeholder="your@email.com (to track your daily limit)"
-              className="w-full rounded-xl bg-surface border border-gold-light px-4 py-3 text-sm text-text-primary placeholder:text-text-muted font-sans focus:outline-none focus:border-gold transition-colors"
-            />
             <textarea
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
@@ -281,6 +275,25 @@ export default function Home() {
             >
               {loadingAnswer ? "Reading the stars…" : "Ask"}
             </button>
+
+            {showAskEmail ? (
+              <input
+                type="email"
+                value={askEmail}
+                onChange={(e) => setAskEmail(e.target.value)}
+                placeholder="your@email.com"
+                autoFocus
+                className="w-full rounded-xl bg-surface border border-gold-light px-4 py-3 text-sm text-text-primary placeholder:text-text-muted font-sans focus:outline-none focus:border-gold transition-colors"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowAskEmail(true)}
+                className="w-full text-xs font-sans tracking-widest uppercase text-text-muted hover:text-text-primary transition-colors py-1"
+              >
+                Subscriber? Enter your email for 5 questions/day
+              </button>
+            )}
           </form>
 
           {answer && (
