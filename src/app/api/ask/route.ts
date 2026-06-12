@@ -7,12 +7,20 @@ import { getCosmicContext } from "@/lib/ephemeris";
 const DAILY_LIMIT_ANONYMOUS = 1;
 const DAILY_LIMIT_SUBSCRIBER = 5;
 
-async function getQuestionCount(email: string): Promise<number> {
+function getClientIp(request: NextRequest): string {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+    request.headers.get("x-real-ip") ??
+    "unknown"
+  );
+}
+
+async function getQuestionCount(key: string): Promise<number> {
   if (!isDbConfigured()) return 0;
   const sql = getDb();
   const [row] = await sql`
     SELECT COUNT(*) AS count FROM question_log
-    WHERE email = ${email} AND asked_at >= CURRENT_DATE
+    WHERE email = ${key} AND asked_at >= CURRENT_DATE
   `;
   return Number(row?.count ?? 0);
 }
@@ -26,10 +34,10 @@ async function isSubscriber(email: string): Promise<boolean> {
   return !!row;
 }
 
-async function logQuestion(email: string): Promise<void> {
+async function logQuestion(key: string): Promise<void> {
   if (!isDbConfigured()) return;
   const sql = getDb();
-  await sql`INSERT INTO question_log (email) VALUES (${email})`;
+  await sql`INSERT INTO question_log (email) VALUES (${key})`;
 }
 
 export async function POST(request: NextRequest) {
@@ -50,12 +58,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Email is required" }, { status: 400 });
   }
 
-  const [count, subscriber] = await Promise.all([
-    getQuestionCount(email),
-    isSubscriber(email),
-  ]);
-
+  // Subscribers are rate-limited by email (confirmed account).
+  // Anonymous users are rate-limited by IP so changing email doesn't bypass the limit.
+  const subscriber = await isSubscriber(email);
+  const rateLimitKey = subscriber ? email : getClientIp(request);
   const limit = subscriber ? DAILY_LIMIT_SUBSCRIBER : DAILY_LIMIT_ANONYMOUS;
+
+  const count = await getQuestionCount(rateLimitKey);
   const remaining = Math.max(0, limit - count);
 
   if (count >= limit) {
@@ -92,7 +101,7 @@ export async function POST(request: NextRequest) {
       prompt: `[User question]: ${question}`,
     });
 
-    await logQuestion(email);
+    await logQuestion(rateLimitKey);
 
     return NextResponse.json({
       answer: text,
