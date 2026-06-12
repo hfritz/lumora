@@ -40,6 +40,8 @@ export default function Home() {
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
   const [loadingQuote, setLoadingQuote] = useState(false);
   const guideRef = useRef<HTMLElement>(null);
+  const askRef = useRef<HTMLElement>(null);
+  const [askVisible, setAskVisible] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("lumora_sign") as ZodiacSignName | null;
@@ -60,6 +62,17 @@ export default function Home() {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+  useEffect(() => {
+    const el = askRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setAskVisible(entry.isIntersecting),
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [loadingAnswer, setLoadingAnswer] = useState(false);
@@ -175,7 +188,12 @@ export default function Home() {
           <a
             href="#subscribe"
             onClick={(e) => { e.preventDefault(); const el = document.getElementById("subscribe"); if (el) slowScrollTo(el); }}
-            className="text-xs font-sans font-medium tracking-widest uppercase text-white/80 border border-white/40 rounded-full px-4 py-2 hover:border-white hover:text-white transition-colors cursor-pointer"
+            className="text-xs font-sans font-medium tracking-widest uppercase rounded-full px-4 py-2 transition-colors cursor-pointer"
+            style={{
+              color: "rgba(201,169,110,0.9)",
+              border: "1px solid rgba(201,169,110,0.6)",
+              boxShadow: "0 0 8px rgba(201,169,110,0.7), 0 0 20px rgba(201,169,110,0.45), 0 0 48px rgba(201,169,110,0.2)",
+            }}
           >
             Subscribe
           </a>
@@ -241,10 +259,23 @@ export default function Home() {
           )}
         </section>
 
-        <div className="w-full max-w-xs mx-auto border-t border-gold-light" />
+        {/* Teaser to Ask section */}
+        <div className="flex flex-col items-center gap-3 pt-4 pb-10">
+          <div className="w-full max-w-xs mx-auto border-t border-gold-light" />
+          <div className="flex flex-col items-center gap-2 pt-5">
+            <span className="text-gold-light text-xl animate-pulse select-none">✦</span>
+            <p
+              className="text-base text-text-muted italic"
+              style={{ fontFamily: "var(--font-cormorant)" }}
+            >
+              Have a question for the cosmos?
+            </p>
+            <span className="text-gold-light text-lg animate-bounce select-none leading-none">↓</span>
+          </div>
+        </div>
 
         {/* Q&A */}
-        <section className="flex flex-col items-center gap-6 py-12">
+        <section ref={askRef} id="ask" className="flex flex-col items-center gap-6 pt-0 pb-12">
           {answer ? (
             <>
               <div className="w-full text-center">
@@ -450,6 +481,24 @@ export default function Home() {
         </div>
         </div>
       </section>
+
+      {/* Floating ask CTA */}
+      {sign && !askVisible && (
+        <button
+          onClick={() => { const el = document.getElementById("ask"); if (el) slowScrollTo(el); }}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-sans font-medium tracking-widest uppercase transition-all duration-500 cursor-pointer"
+          style={{
+            background: "rgba(20,12,8,0.85)",
+            border: "1px solid rgba(201,169,110,0.5)",
+            color: "rgba(201,169,110,0.9)",
+            backdropFilter: "blur(8px)",
+            boxShadow: "0 0 24px rgba(201,169,110,0.15)",
+          }}
+        >
+          <span className="animate-pulse">✦</span>
+          Ask the stars
+        </button>
+      )}
 
       {/* Footer */}
       <footer className="border-t border-gold-light py-6 px-6">
