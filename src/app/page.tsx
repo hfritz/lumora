@@ -41,7 +41,9 @@ export default function Home() {
   const [loadingQuote, setLoadingQuote] = useState(false);
   const guideRef = useRef<HTMLElement>(null);
   const askRef = useRef<HTMLElement>(null);
+  const footerRef = useRef<HTMLElement>(null);
   const [askVisible, setAskVisible] = useState(false);
+  const [footerVisible, setFooterVisible] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("lumora_sign") as ZodiacSignName | null;
@@ -67,6 +69,17 @@ export default function Home() {
     if (!el) return;
     const observer = new IntersectionObserver(
       ([entry]) => setAskVisible(entry.isIntersecting),
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const el = footerRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setFooterVisible(entry.isIntersecting),
       { threshold: 0.1 }
     );
     observer.observe(el);
@@ -397,7 +410,7 @@ export default function Home() {
                     <SignSelector selected="" onChange={handleSignChange} />
                   </div>
                 ) : (
-                  <form onSubmit={handleSubscribe} className="w-full flex gap-3 items-center">
+                  <form onSubmit={handleSubscribe} className="w-full flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
                     <input
                       type="email"
                       value={subscribeEmail}
@@ -412,7 +425,7 @@ export default function Home() {
                     />
                     <button
                       type="submit"
-                      className="shrink-0 inline-flex items-center justify-center rounded-full border border-white/50 text-white/90 text-xs font-sans font-medium tracking-widest uppercase px-7 py-4 hover:bg-white/10 transition-colors cursor-pointer"
+                      className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center rounded-full border border-white/50 text-white/90 text-xs font-sans font-medium tracking-widest uppercase px-7 py-4 hover:bg-white/10 transition-colors cursor-pointer"
                     >
                       Subscribe
                     </button>
@@ -483,7 +496,7 @@ export default function Home() {
       </section>
 
       {/* Floating ask CTA */}
-      {sign && !askVisible && (
+      {sign && !askVisible && !footerVisible && (
         <button
           onClick={() => { const el = document.getElementById("ask"); if (el) slowScrollTo(el); }}
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-sans font-medium tracking-widest uppercase transition-all duration-500 cursor-pointer"
@@ -501,7 +514,7 @@ export default function Home() {
       )}
 
       {/* Footer */}
-      <footer className="border-t border-gold-light py-6 px-6">
+      <footer ref={footerRef} className="border-t border-gold-light py-6 px-6">
         <p className="text-center text-xs font-sans text-text-muted tracking-wide">
           Built by{" "}
           <a
