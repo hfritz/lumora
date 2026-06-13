@@ -65,6 +65,10 @@ async function generateQuoteAndBriefingForSign(
   }
 }
 
+export async function GET(request: NextRequest) {
+  return POST(request);
+}
+
 export async function POST(request: NextRequest) {
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
