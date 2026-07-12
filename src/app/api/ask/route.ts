@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
   try {
     const groq = createGroq({ apiKey: groqKey });
     const { text } = await generateText({
-      model: groq("llama-3.3-70b-versatile"),
+      model: groq("openai/gpt-oss-120b"),
       system: `You are Lumora, a cosmic guidance assistant. Answer only questions about astrology, zodiac signs, moon phases, planetary events, Mercury retrograde, and spiritual energy. Keep answers short (2–4 sentences), warm, and practical. Today is ${today}. Cosmic context: ${cosmicContext}. If the question is off-topic, respond exactly: "That's outside my cosmic expertise. Ask me something about the stars, moon, or planetary energy."`,
       prompt: `[User question]: ${question}`,
     });

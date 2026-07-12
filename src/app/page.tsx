@@ -6,7 +6,10 @@ import { SignSelector } from "@/components/sign-selector";
 import { QuoteCard } from "@/components/quote-card";
 import { StarField } from "@/components/star-field";
 import { SignOnboarding } from "@/components/sign-onboarding";
+import { TodaysLenses } from "@/components/todays-lenses";
 import { ZodiacSignName } from "@/data/signs";
+
+type LensKey = "work" | "love" | "family" | "money" | "self";
 
 interface QuoteData {
   quote: string;
@@ -16,6 +19,8 @@ interface QuoteData {
   moon_phase: string;
   moon_sign: string;
   retrograde: string | null;
+  featured_lens: LensKey | null;
+  lenses: Record<LensKey, { teaser: string; detail: string }> | null;
 }
 
 function slowScrollTo(target: HTMLElement, duration = 1400, offset = 24) {
@@ -42,8 +47,10 @@ export default function Home() {
   const guideRef = useRef<HTMLElement>(null);
   const askRef = useRef<HTMLElement>(null);
   const footerRef = useRef<HTMLElement>(null);
+  const lensesRef = useRef<HTMLDivElement>(null);
   const [askVisible, setAskVisible] = useState(false);
   const [footerVisible, setFooterVisible] = useState(false);
+  const [hasSeenLenses, setHasSeenLenses] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("lumora_sign") as ZodiacSignName | null;
@@ -85,6 +92,17 @@ export default function Home() {
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    const el = lensesRef.current;
+    if (!el || hasSeenLenses) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setHasSeenLenses(true); observer.disconnect(); } },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasSeenLenses, quoteData?.lenses]);
 
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -270,6 +288,16 @@ export default function Home() {
               loading={loadingQuote}
             />
           )}
+
+          <div ref={lensesRef} className="w-full flex flex-col items-center gap-6">
+            {sign && (
+              <TodaysLenses
+                lenses={quoteData?.lenses ?? null}
+                featuredLens={quoteData?.featured_lens ?? null}
+                loading={loadingQuote}
+              />
+            )}
+          </div>
         </section>
 
         {/* Teaser to Ask section */}
@@ -495,8 +523,26 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Floating lenses CTA */}
+      {sign && !!quoteData?.lenses && !hasSeenLenses && !footerVisible && (
+        <button
+          onClick={() => { const el = document.getElementById("lenses"); if (el) slowScrollTo(el); }}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-sans font-medium tracking-widest uppercase transition-all duration-500 cursor-pointer"
+          style={{
+            background: "rgba(20,12,8,0.85)",
+            border: "1px solid rgba(201,169,110,0.5)",
+            color: "rgba(201,169,110,0.9)",
+            backdropFilter: "blur(8px)",
+            boxShadow: "0 0 24px rgba(201,169,110,0.15)",
+          }}
+        >
+          <span className="animate-pulse">✦</span>
+          See your full guide
+        </button>
+      )}
+
       {/* Floating ask CTA */}
-      {sign && !askVisible && !footerVisible && (
+      {sign && (hasSeenLenses || !quoteData?.lenses) && !askVisible && !footerVisible && (
         <button
           onClick={() => { const el = document.getElementById("ask"); if (el) slowScrollTo(el); }}
           className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full px-5 py-2.5 text-xs font-sans font-medium tracking-widest uppercase transition-all duration-500 cursor-pointer"

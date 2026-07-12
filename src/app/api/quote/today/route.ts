@@ -1,71 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateText } from "ai";
 import { createGroq } from "@ai-sdk/groq";
 import { getDb, isDbConfigured } from "@/lib/db";
 import { getMoonPhaseForDate, getActiveRetrogrades } from "@/lib/ephemeris";
+import { FALLBACK_QUOTES, generateDailyContent, type DailyContent } from "@/lib/cosmic-content";
 
-const FALLBACK_QUOTES: Record<string, string> = {
-  Aries: "Your energy is magnetic today — let your fire lead, not your fear.",
-  Taurus: "What you nurture in stillness will bloom in ways you cannot yet imagine.",
-  Gemini: "Two paths appear before you. Both are right. Trust the one that excites you more.",
-  Cancer: "Your sensitivity is not a weakness — it is how the universe speaks through you.",
-  Leo: "Shine without apology. The world is brighter when you are fully yourself.",
-  Virgo: "Release the need for perfection today. The imperfect thing done is worth more than the perfect thing imagined.",
-  Libra: "Balance is not stillness — it is a constant, graceful adjustment. You already know how.",
-  Scorpio: "What feels like an ending is simply the universe clearing space for something greater.",
-  Sagittarius: "The horizon you seek is closer than it appears. Keep moving toward it.",
-  Capricorn: "Your patience is building something no shortcut could create. Trust the process.",
-  Aquarius: "Your vision of what could be is not idealism — it is prophecy. Keep believing.",
-  Pisces: "The dream you keep returning to is not an escape. It is a direction.",
-};
-
-function buildCosmicContext(sign: string, moon: { phase: string; sign: string }, retro: string) {
-  const retroContext = retro ? `${retro} is active.` : "No major retrogrades active.";
-  return { retroContext, moonContext: `Moon phase: ${moon.phase} in ${moon.sign}.` };
+interface ContentView {
+  quote: string;
+  briefing: string | null;
+  subject_line: string | null;
+  featured_lens: DailyContent["featured_lens"] | null;
+  lenses: DailyContent["lenses"] | null;
 }
 
-async function generateQuoteAndBriefing(
+function jsonResponse(
+  content: ContentView | null,
   sign: string,
-  date: string,
+  today: string,
   moon: { phase: string; sign: string },
-  retro: string
-): Promise<{ quote: string; briefing: string }> {
-  const groqKey = process.env.GROQ_API_KEY;
-  if (!groqKey) {
-    return {
-      quote: FALLBACK_QUOTES[sign] ?? FALLBACK_QUOTES["Aries"],
-      briefing: "",
-    };
-  }
-
-  const { retroContext, moonContext } = buildCosmicContext(sign, moon, retro);
-
-  try {
-    const groq = createGroq({ apiKey: groqKey });
-
-    const [quoteResult, briefingResult] = await Promise.all([
-      generateText({
-        model: groq("llama-3.3-70b-versatile"),
-        system: `You are Lumora, a cosmic inspiration guide. Generate a single, short inspirational quote (1–2 sentences) for ${sign} that reflects today's cosmic energy. Today is ${date}. ${moonContext} ${retroContext} The quote should feel warm, wise, and uplifting — not mystical jargon. No attribution. No quotation marks.`,
-        prompt: `Generate today's quote for ${sign}.`,
-      }),
-      generateText({
-        model: groq("llama-3.3-70b-versatile"),
-        system: `You are Lumora, a cosmic guidance guide. Write a 2–3 sentence cosmic briefing for ${sign} for today (${date}). Explain how the ${moon.phase} moon in ${moon.sign}${retro ? ` and ${retro}` : ""} combine to shape today's energy specifically for ${sign}. Be practical and specific — tell the reader what this means for their day and what to do with it. Write directly to the reader using "you". Plain language, no jargon, warm tone.`,
-        prompt: `Write today's cosmic briefing for ${sign}.`,
-      }),
-    ]);
-
-    return {
-      quote: quoteResult.text.trim(),
-      briefing: briefingResult.text.trim(),
-    };
-  } catch {
-    return {
-      quote: FALLBACK_QUOTES[sign] ?? FALLBACK_QUOTES["Aries"],
-      briefing: "",
-    };
-  }
+  retro: string,
+  source: "fallback" | "cache" | "generated"
+) {
+  return NextResponse.json({
+    quote: content?.quote ?? (FALLBACK_QUOTES[sign] ?? FALLBACK_QUOTES["Aries"]),
+    briefing: content?.briefing ?? null,
+    subject_line: content?.subject_line ?? null,
+    featured_lens: content?.featured_lens ?? null,
+    lenses: content?.lenses ?? null,
+    sign,
+    date: today,
+    moon_phase: moon.phase,
+    moon_sign: moon.sign,
+    retrograde: retro || null,
+    source,
+  });
 }
 
 export async function GET(request: NextRequest) {
@@ -75,69 +42,63 @@ export async function GET(request: NextRequest) {
   const retro = getActiveRetrogrades(today);
 
   if (!isDbConfigured()) {
-    return NextResponse.json({
-      quote: FALLBACK_QUOTES[sign] ?? FALLBACK_QUOTES["Aries"],
-      briefing: null,
-      sign,
-      date: today,
-      moon_phase: moon.phase,
-      moon_sign: moon.sign,
-      retrograde: retro || null,
-      source: "fallback",
-    });
+    return jsonResponse(null, sign, today, moon, retro, "fallback");
   }
 
   const sql = getDb();
 
-  // Check cache
   const [cached] = await sql`
-    SELECT quote, briefing FROM daily_quotes
+    SELECT quote, briefing, subject_line, featured_lens, lenses FROM daily_quotes
     WHERE date = ${today} AND zodiac_sign = ${sign}
   `;
 
-  if (cached) {
-    let briefing = cached.briefing ?? null;
-
-    if (!briefing) {
-      const generated = await generateQuoteAndBriefing(sign, today, moon, retro);
-      briefing = generated.briefing || null;
-      if (briefing) {
-        await sql`
-          UPDATE daily_quotes SET briefing = ${briefing}
-          WHERE date = ${today} AND zodiac_sign = ${sign}
-        `;
-      }
-    }
-
-    return NextResponse.json({
-      quote: cached.quote,
-      briefing,
+  if (cached?.lenses) {
+    return jsonResponse(
+      {
+        quote: cached.quote,
+        briefing: cached.briefing,
+        subject_line: cached.subject_line,
+        featured_lens: cached.featured_lens,
+        lenses: cached.lenses,
+      },
       sign,
-      date: today,
-      moon_phase: moon.phase,
-      moon_sign: moon.sign,
-      retrograde: retro || null,
-      source: "cache",
-    });
+      today,
+      moon,
+      retro,
+      "cache"
+    );
   }
 
-  // Generate and cache
-  const { quote, briefing } = await generateQuoteAndBriefing(sign, today, moon, retro);
+  const groqKey = process.env.GROQ_API_KEY;
+  const content = groqKey
+    ? await generateDailyContent(sign, today, moon, retro, createGroq({ apiKey: groqKey }))
+    : null;
+
+  if (!content) {
+    if (cached) {
+      // Older cached row from before the lenses feature — keep serving its quote/briefing.
+      return jsonResponse(
+        { quote: cached.quote, briefing: cached.briefing, subject_line: null, featured_lens: null, lenses: null },
+        sign,
+        today,
+        moon,
+        retro,
+        "cache"
+      );
+    }
+    return jsonResponse(null, sign, today, moon, retro, "fallback");
+  }
 
   await sql`
-    INSERT INTO daily_quotes (date, zodiac_sign, quote, briefing)
-    VALUES (${today}, ${sign}, ${quote}, ${briefing || null})
-    ON CONFLICT (date, zodiac_sign) DO UPDATE SET quote = EXCLUDED.quote, briefing = EXCLUDED.briefing
+    INSERT INTO daily_quotes (date, zodiac_sign, quote, briefing, subject_line, featured_lens, lenses)
+    VALUES (${today}, ${sign}, ${content.quote}, ${content.briefing}, ${content.subject_line}, ${content.featured_lens}, ${JSON.stringify(content.lenses)}::jsonb)
+    ON CONFLICT (date, zodiac_sign) DO UPDATE SET
+      quote = EXCLUDED.quote,
+      briefing = EXCLUDED.briefing,
+      subject_line = EXCLUDED.subject_line,
+      featured_lens = EXCLUDED.featured_lens,
+      lenses = EXCLUDED.lenses
   `;
 
-  return NextResponse.json({
-    quote,
-    briefing: briefing || null,
-    sign,
-    date: today,
-    moon_phase: moon.phase,
-    moon_sign: moon.sign,
-    retrograde: retro || null,
-    source: "generated",
-  });
+  return jsonResponse(content, sign, today, moon, retro, "generated");
 }

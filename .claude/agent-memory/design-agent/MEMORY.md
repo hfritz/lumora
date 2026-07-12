@@ -1,0 +1,2 @@
+- [Flat prototype rejection](feedback_flat-prototype-rejection.md) — reusing existing card chrome for new features makes them recede; need real contrast
+- [Today's Lenses feature](project_todays-lenses.md) — 5 daily life-area readings, model-picked featured lens, day-specific not weekday-keyed

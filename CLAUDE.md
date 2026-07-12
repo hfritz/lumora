@@ -25,7 +25,7 @@ Before major work, read:
 ## Tech Stack
 
 - **Framework:** Next.js (App Router), TypeScript, Tailwind CSS
-- **AI:** Groq (Llama 3.3 70B) via AI SDK + `@ai-sdk/groq` — quote generation (12 signs/day) and cosmic Q&A
+- **AI:** Groq (GPT-OSS 120B) via AI SDK + `@ai-sdk/groq` — quote generation (12 signs/day) and cosmic Q&A
 - **Deployment:** Vercel
 - **Type:** Progressive Web App (PWA) — mobile-first, installable, web push notifications
 
