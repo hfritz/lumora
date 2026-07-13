@@ -59,7 +59,29 @@ const dailyContentSchema = z.object({
 
 export type DailyContent = z.infer<typeof dailyContentSchema>;
 
+const GENERATION_ATTEMPTS = 2;
+const RETRY_DELAY_MS = 1000;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function generateDailyContent(
+  sign: string,
+  date: string,
+  moon: { phase: string; sign: string },
+  retro: string,
+  groq: ReturnType<typeof createGroq>
+): Promise<DailyContent | null> {
+  for (let attempt = 1; attempt <= GENERATION_ATTEMPTS; attempt++) {
+    const result = await attemptGeneration(sign, date, moon, retro, groq);
+    if (result) return result;
+    if (attempt < GENERATION_ATTEMPTS) await sleep(RETRY_DELAY_MS);
+  }
+  return null;
+}
+
+async function attemptGeneration(
   sign: string,
   date: string,
   moon: { phase: string; sign: string },
