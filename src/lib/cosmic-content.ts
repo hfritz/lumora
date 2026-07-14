@@ -60,7 +60,10 @@ const dailyContentSchema = z.object({
 export type DailyContent = z.infer<typeof dailyContentSchema>;
 
 const GENERATION_ATTEMPTS = 2;
-const RETRY_DELAY_MS = 1000;
+// Groq's TPM rate limit resets on a rolling window and its 429s report a
+// multi-second cooldown — a short retry just re-burns tokens into an
+// already-exhausted quota, so this needs to be a real wait, not a blip.
+const RETRY_DELAY_MS = 12_000;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -94,6 +97,10 @@ async function attemptGeneration(
   try {
     const { object } = await generateObject({
       model: groq("openai/gpt-oss-120b"),
+      // The AI SDK's own default retries (3 attempts) resend the full
+      // request on every retry, which just burns more tokens into a
+      // rate-limited quota. We own retry/backoff at the caller level instead.
+      maxRetries: 0,
       schema: dailyContentSchema,
       system: `You are Lumora, a cosmic guidance and inspiration guide. Today is ${date}. ${moonContext} ${retroContext} Write everything for ${sign}. This must read as personal, not a generic horoscope template — center it on what ${sign} is likely FEELING today (name the specific emotion), and tie that feeling to ${sign}'s known personality traits, before giving practical guidance. Tone: warm, wise, emotionally attuned, richly descriptive — write in full, flowing sentences, never terse taglines or sentence fragments. Plain language, no mystical jargon, address the reader directly as "you" and by their sign name (${sign}).
 

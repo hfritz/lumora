@@ -8,24 +8,18 @@ import { isAuthorizedCronRequest, cronAuthHeader } from "@/lib/cron-auth";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3002";
 
-// Each invocation handles exactly one batch of signs (not all 12) so it
-// stays well within maxDuration even when a sign needs a retry. Once the
-// last batch is done, it hands off to daily-send; otherwise it self-chains
-// to the next batch — same resumable pattern as daily-send's fan-out.
-const GENERATION_BATCH_SIZE = 4;
-
-function chunk<T>(items: readonly T[], size: number): T[][] {
-  const batches: T[][] = [];
-  for (let i = 0; i < items.length; i += size) batches.push(items.slice(i, i + size));
-  return batches;
-}
-
 export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   return POST(request);
 }
 
+// Groq's TPM quota for this model is tight enough that even a handful of
+// concurrent sign generations (each a large structured-output call) blows
+// through it — so each invocation generates exactly one sign, then hands
+// off to the next. This keeps every single request cheap and reliably
+// under maxDuration, and naturally paces requests against the rate limit
+// instead of bursting them.
 export async function POST(request: NextRequest) {
   if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -40,12 +34,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "GROQ_API_KEY required" }, { status: 503 });
   }
 
-  const batches = chunk(ZODIAC_SIGNS, GENERATION_BATCH_SIZE);
-  const batchIndex = Number(request.nextUrl.searchParams.get("batch") ?? "0");
-  const currentBatch = batches[batchIndex];
+  const index = Number(request.nextUrl.searchParams.get("i") ?? "0");
+  const sign = ZODIAC_SIGNS[index];
 
-  if (!currentBatch) {
-    return NextResponse.json({ error: `Invalid batch index ${batchIndex}` }, { status: 400 });
+  if (!sign) {
+    return NextResponse.json({ error: `Invalid sign index ${index}` }, { status: 400 });
   }
 
   const today = new Date().toISOString().split("T")[0];
@@ -54,57 +47,50 @@ export async function POST(request: NextRequest) {
   const moon = getMoonPhaseForDate(today);
   const retro = getActiveRetrogrades(today);
 
-  let generated = 0;
-  let reused = 0;
-  let failed = 0;
+  let outcome: "generated" | "reused" | "failed";
 
-  await Promise.all(
-    currentBatch.map(async ({ name }) => {
-      const [cached] = await sql`
-        SELECT quote, lenses FROM daily_quotes
-        WHERE date = ${today} AND zodiac_sign = ${name}
+  const [cached] = await sql`
+    SELECT quote, lenses FROM daily_quotes
+    WHERE date = ${today} AND zodiac_sign = ${sign.name}
+  `;
+
+  if (cached?.lenses) {
+    outcome = "reused";
+  } else {
+    const content = await generateDailyContent(sign.name, today, moon, retro, groq);
+
+    if (content) {
+      await sql`
+        INSERT INTO daily_quotes (date, zodiac_sign, quote, briefing, subject_line, featured_lens, lenses)
+        VALUES (${today}, ${sign.name}, ${content.quote}, ${content.briefing}, ${content.subject_line}, ${content.featured_lens}, ${JSON.stringify(content.lenses)}::jsonb)
+        ON CONFLICT (date, zodiac_sign) DO UPDATE SET
+          quote = EXCLUDED.quote,
+          briefing = EXCLUDED.briefing,
+          subject_line = EXCLUDED.subject_line,
+          featured_lens = EXCLUDED.featured_lens,
+          lenses = EXCLUDED.lenses
       `;
-
-      if (cached?.lenses) {
-        reused++;
-        return;
-      }
-
-      const content = await generateDailyContent(name, today, moon, retro, groq);
-
-      if (content) {
+      outcome = "generated";
+    } else {
+      console.error(`[daily-generate] generation failed for ${sign.name} after retries`);
+      const quote = cached?.quote ?? FALLBACK_QUOTES[sign.name] ?? FALLBACK_QUOTES["Aries"];
+      if (!cached) {
         await sql`
-          INSERT INTO daily_quotes (date, zodiac_sign, quote, briefing, subject_line, featured_lens, lenses)
-          VALUES (${today}, ${name}, ${content.quote}, ${content.briefing}, ${content.subject_line}, ${content.featured_lens}, ${JSON.stringify(content.lenses)}::jsonb)
-          ON CONFLICT (date, zodiac_sign) DO UPDATE SET
-            quote = EXCLUDED.quote,
-            briefing = EXCLUDED.briefing,
-            subject_line = EXCLUDED.subject_line,
-            featured_lens = EXCLUDED.featured_lens,
-            lenses = EXCLUDED.lenses
+          INSERT INTO daily_quotes (date, zodiac_sign, quote)
+          VALUES (${today}, ${sign.name}, ${quote})
+          ON CONFLICT (date, zodiac_sign) DO NOTHING
         `;
-        generated++;
-      } else {
-        console.error(`[daily-generate] generation failed for ${name} after retries`);
-        const quote = cached?.quote ?? FALLBACK_QUOTES[name] ?? FALLBACK_QUOTES["Aries"];
-        if (!cached) {
-          await sql`
-            INSERT INTO daily_quotes (date, zodiac_sign, quote)
-            VALUES (${today}, ${name}, ${quote})
-            ON CONFLICT (date, zodiac_sign) DO NOTHING
-          `;
-        }
-        failed++;
       }
-    })
-  );
+      outcome = "failed";
+    }
+  }
 
-  const isLastBatch = batchIndex === batches.length - 1;
+  const isLastSign = index === ZODIAC_SIGNS.length - 1;
 
   after(async () => {
-    const next = isLastBatch
+    const next = isLastSign
       ? `${APP_URL}/api/cron/daily-send`
-      : `${APP_URL}/api/cron/daily-generate?batch=${batchIndex + 1}`;
+      : `${APP_URL}/api/cron/daily-generate?i=${index + 1}`;
     try {
       const res = await fetch(next, { method: "POST", headers: cronAuthHeader() });
       if (!res.ok) {
@@ -117,11 +103,9 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     date: today,
-    batch: batchIndex,
-    batch_count: batches.length,
-    generated,
-    reused,
-    failed,
-    next: isLastBatch ? "daily-send" : `daily-generate?batch=${batchIndex + 1}`,
+    index,
+    sign: sign.name,
+    outcome,
+    next: isLastSign ? "daily-send" : `daily-generate?i=${index + 1}`,
   });
 }
