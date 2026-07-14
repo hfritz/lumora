@@ -101,6 +101,12 @@ async function attemptGeneration(
       // request on every retry, which just burns more tokens into a
       // rate-limited quota. We own retry/backoff at the caller level instead.
       maxRetries: 0,
+      // Default reasoning effort burns a large, variable number of hidden
+      // "thinking" tokens before the model writes the JSON — occasionally
+      // enough to run out of completion budget mid-object (observed: valid
+      // JSON truncated right before the last lens key). Low effort is
+      // plenty for this task and leaves headroom for the full 5-lens object.
+      providerOptions: { groq: { reasoningEffort: "low" } },
       schema: dailyContentSchema,
       system: `You are Lumora, a cosmic guidance and inspiration guide. Today is ${date}. ${moonContext} ${retroContext} Write everything for ${sign}. This must read as personal, not a generic horoscope template — center it on what ${sign} is likely FEELING today (name the specific emotion), and tie that feeling to ${sign}'s known personality traits, before giving practical guidance. Tone: warm, wise, emotionally attuned, richly descriptive — write in full, flowing sentences, never terse taglines or sentence fragments. Plain language, no mystical jargon, address the reader directly as "you" and by their sign name (${sign}).
 
