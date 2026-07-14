@@ -1,4 +1,4 @@
-import { generateObject } from "ai";
+import { APICallError, generateObject } from "ai";
 import { createGroq } from "@ai-sdk/groq";
 import { z } from "zod";
 
@@ -60,13 +60,28 @@ const dailyContentSchema = z.object({
 export type DailyContent = z.infer<typeof dailyContentSchema>;
 
 const GENERATION_ATTEMPTS = 2;
-// Groq's TPM rate limit resets on a rolling window and its 429s report a
-// multi-second cooldown — a short retry just re-burns tokens into an
-// already-exhausted quota, so this needs to be a real wait, not a blip.
-const RETRY_DELAY_MS = 12_000;
+// Fallback if a 429 doesn't carry a parseable retry-after (shouldn't happen
+// with Groq in practice, but keeps us from retrying into the same window).
+const DEFAULT_RETRY_DELAY_MS = 12_000;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Groq's TPM rate limit is a rolling 60s window, and its 429s tell us
+// exactly how long until enough of it frees up (retry-after header, backed
+// by the same cooldown named in the error message) — waiting that long
+// instead of a fixed guess means we don't retry into a still-exhausted
+// window, and don't over-wait once it's actually clear.
+function retryDelayFromError(err: unknown): number {
+  if (APICallError.isInstance(err) && err.statusCode === 429) {
+    const header = err.responseHeaders?.["retry-after"];
+    const seconds = header ? Number(header) : NaN;
+    if (!Number.isNaN(seconds) && seconds > 0) {
+      return seconds * 1000 + 1_000; // small buffer past the boundary
+    }
+  }
+  return DEFAULT_RETRY_DELAY_MS;
 }
 
 export async function generateDailyContent(
@@ -77,9 +92,9 @@ export async function generateDailyContent(
   groq: ReturnType<typeof createGroq>
 ): Promise<DailyContent | null> {
   for (let attempt = 1; attempt <= GENERATION_ATTEMPTS; attempt++) {
-    const result = await attemptGeneration(sign, date, moon, retro, groq);
-    if (result) return result;
-    if (attempt < GENERATION_ATTEMPTS) await sleep(RETRY_DELAY_MS);
+    const { content, error } = await attemptGeneration(sign, date, moon, retro, groq);
+    if (content) return content;
+    if (attempt < GENERATION_ATTEMPTS) await sleep(retryDelayFromError(error));
   }
   return null;
 }
@@ -90,7 +105,7 @@ async function attemptGeneration(
   moon: { phase: string; sign: string },
   retro: string,
   groq: ReturnType<typeof createGroq>
-): Promise<DailyContent | null> {
+): Promise<{ content: DailyContent | null; error?: unknown }> {
   const retroContext = retro ? `${retro} is active.` : "No major retrogrades active.";
   const moonContext = `Moon phase: ${moon.phase} in ${moon.sign}.`;
 
@@ -118,9 +133,9 @@ Generate:
 - lenses: for EACH of the 5 keys (work, love, family, money, self), write a full one-sentence teaser and a substantive 3-4 sentence detail. Each detail must name the specific feeling ${sign} is likely to experience in that life area today, tied to their personality traits, then give practical guidance. Every lens gets real, complete, emotionally personal content, not just the featured one — treat all 5 with equal care.`,
       prompt: `Generate today's full cosmic guidance for ${sign}.`,
     });
-    return object;
+    return { content: object };
   } catch (err) {
     console.error(`[cosmic-content] generation failed for ${sign}:`, err);
-    return null;
+    return { content: null, error: err };
   }
 }

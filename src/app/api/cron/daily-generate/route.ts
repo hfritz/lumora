@@ -11,9 +11,15 @@ import { APP_URL } from "@/lib/app-url";
 // scales with subscriber count), so it runs sequentially in one invocation
 // rather than self-chaining — Vercel's infinite-loop protection kills a
 // function that calls itself repeatedly, which a per-sign chain hits well
-// before covering all 12. Sequential + a small pacing gap also keeps us
-// under Groq's tokens-per-minute quota, which concurrent calls blew through.
-const PACING_DELAY_MS = 1500;
+// before covering all 12.
+//
+// Sequential + pacing also keeps us under Groq's 8000 tokens-per-minute
+// quota, but a gap alone can't guarantee that — each generation costs
+// ~1800-2500 tokens, so the rolling window only ever has room for ~3 calls
+// at a time regardless of spacing. This gap just trims how often we land in
+// an exhausted window; generateDailyContent's own retry (honoring Groq's
+// retry-after) is what actually recovers when we do.
+const PACING_DELAY_MS = 4000;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
