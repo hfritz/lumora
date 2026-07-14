@@ -5,21 +5,26 @@ import { getMoonPhaseForDate, getActiveRetrogrades } from "@/lib/ephemeris";
 import { ZODIAC_SIGNS } from "@/data/signs";
 import { FALLBACK_QUOTES, generateDailyContent } from "@/lib/cosmic-content";
 import { isAuthorizedCronRequest, cronAuthHeader } from "@/lib/cron-auth";
+import { APP_URL } from "@/lib/app-url";
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3002";
+// Generation is a small, fixed-size job (always exactly 12 signs, never
+// scales with subscriber count), so it runs sequentially in one invocation
+// rather than self-chaining — Vercel's infinite-loop protection kills a
+// function that calls itself repeatedly, which a per-sign chain hits well
+// before covering all 12. Sequential + a small pacing gap also keeps us
+// under Groq's tokens-per-minute quota, which concurrent calls blew through.
+const PACING_DELAY_MS = 1500;
 
-export const maxDuration = 60;
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export const maxDuration = 300;
 
 export async function GET(request: NextRequest) {
   return POST(request);
 }
 
-// Groq's TPM quota for this model is tight enough that even a handful of
-// concurrent sign generations (each a large structured-output call) blows
-// through it — so each invocation generates exactly one sign, then hands
-// off to the next. This keeps every single request cheap and reliably
-// under maxDuration, and naturally paces requests against the rate limit
-// instead of bursting them.
 export async function POST(request: NextRequest) {
   if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -34,29 +39,29 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "GROQ_API_KEY required" }, { status: 503 });
   }
 
-  const index = Number(request.nextUrl.searchParams.get("i") ?? "0");
-  const sign = ZODIAC_SIGNS[index];
-
-  if (!sign) {
-    return NextResponse.json({ error: `Invalid sign index ${index}` }, { status: 400 });
-  }
-
   const today = new Date().toISOString().split("T")[0];
   const sql = getDb();
   const groq = createGroq({ apiKey: groqKey });
   const moon = getMoonPhaseForDate(today);
   const retro = getActiveRetrogrades(today);
 
-  let outcome: "generated" | "reused" | "failed";
+  let generated = 0;
+  let reused = 0;
+  let failed = 0;
 
-  const [cached] = await sql`
-    SELECT quote, lenses FROM daily_quotes
-    WHERE date = ${today} AND zodiac_sign = ${sign.name}
-  `;
+  for (const [i, sign] of ZODIAC_SIGNS.entries()) {
+    const [cached] = await sql`
+      SELECT quote, lenses FROM daily_quotes
+      WHERE date = ${today} AND zodiac_sign = ${sign.name}
+    `;
 
-  if (cached?.lenses) {
-    outcome = "reused";
-  } else {
+    if (cached?.lenses) {
+      reused++;
+      continue;
+    }
+
+    if (i > 0) await sleep(PACING_DELAY_MS);
+
     const content = await generateDailyContent(sign.name, today, moon, retro, groq);
 
     if (content) {
@@ -70,7 +75,7 @@ export async function POST(request: NextRequest) {
           featured_lens = EXCLUDED.featured_lens,
           lenses = EXCLUDED.lenses
       `;
-      outcome = "generated";
+      generated++;
     } else {
       console.error(`[daily-generate] generation failed for ${sign.name} after retries`);
       const quote = cached?.quote ?? FALLBACK_QUOTES[sign.name] ?? FALLBACK_QUOTES["Aries"];
@@ -81,31 +86,25 @@ export async function POST(request: NextRequest) {
           ON CONFLICT (date, zodiac_sign) DO NOTHING
         `;
       }
-      outcome = "failed";
+      failed++;
     }
   }
 
-  const isLastSign = index === ZODIAC_SIGNS.length - 1;
-
+  // Single hop to daily-send — not a chain, so this never risks Vercel's
+  // loop protection.
   after(async () => {
-    const next = isLastSign
-      ? `${APP_URL}/api/cron/daily-send`
-      : `${APP_URL}/api/cron/daily-generate?i=${index + 1}`;
     try {
-      const res = await fetch(next, { method: "POST", headers: cronAuthHeader() });
+      const res = await fetch(`${APP_URL}/api/cron/daily-send`, {
+        method: "POST",
+        headers: cronAuthHeader(),
+      });
       if (!res.ok) {
-        console.error(`[daily-generate] chained call to ${next} failed: ${res.status} ${await res.text()}`);
+        console.error(`[daily-generate] daily-send trigger failed: ${res.status} ${await res.text()}`);
       }
     } catch (err) {
-      console.error(`[daily-generate] failed to trigger ${next}:`, err);
+      console.error("[daily-generate] failed to trigger daily-send:", err);
     }
   });
 
-  return NextResponse.json({
-    date: today,
-    index,
-    sign: sign.name,
-    outcome,
-    next: isLastSign ? "daily-send" : `daily-generate?i=${index + 1}`,
-  });
+  return NextResponse.json({ date: today, generated, reused, failed });
 }

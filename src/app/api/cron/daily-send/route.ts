@@ -5,8 +5,7 @@ import { getMoonPhaseForDate, getActiveRetrogrades } from "@/lib/ephemeris";
 import { makeUnsubscribeToken } from "@/lib/tokens";
 import { FALLBACK_QUOTES, LENS_KEYS, type DailyContent, type LensKey } from "@/lib/cosmic-content";
 import { isAuthorizedCronRequest, cronAuthHeader } from "@/lib/cron-auth";
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3002";
+import { APP_URL } from "@/lib/app-url";
 
 const LENS_META: Record<LensKey, { icon: string; label: string }> = {
   work: { icon: "💼", label: "Work" },
@@ -23,9 +22,14 @@ const LENS_META: Record<LensKey, { icon: string; label: string }> = {
 // resumable regardless of how large the list grows. If work remains when
 // the batch (or a time budget) runs out, it re-triggers itself in the
 // background instead of waiting for tomorrow's cron tick.
+// Vercel's infinite-loop protection kills a function that calls itself
+// repeatedly (observed tripping around the 5th consecutive self-call), so
+// self-chaining can only cover a handful of batches — fine up to a few
+// hundred subscribers, but a real queue (e.g. QStash) would be needed
+// beyond that rather than pushing this cap higher.
 const SEND_BATCH_SIZE = 50;
 const SEND_TIME_BUDGET_MS = 45_000;
-const MAX_CHAIN_DEPTH = 200; // headroom for ~10k subscribers at 50/batch
+const MAX_CHAIN_DEPTH = 3;
 
 export const maxDuration = 60;
 
