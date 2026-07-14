@@ -59,7 +59,12 @@ const dailyContentSchema = z.object({
 
 export type DailyContent = z.infer<typeof dailyContentSchema>;
 
-const GENERATION_ATTEMPTS = 2;
+// Total generation cost for 12 signs (~24k tokens) is ~3x the account's 8k
+// tokens-per-minute budget, so it structurally takes multiple budget
+// windows to clear the whole run — a sign landing on its 2nd 429 in a row
+// while the window is still refilling is expected, not rare. A 3rd attempt
+// costs one more short wait and comfortably fits maxDuration's headroom.
+const GENERATION_ATTEMPTS = 3;
 // Fallback if a 429 doesn't carry a parseable retry-after (shouldn't happen
 // with Groq in practice, but keeps us from retrying into the same window).
 const DEFAULT_RETRY_DELAY_MS = 12_000;
